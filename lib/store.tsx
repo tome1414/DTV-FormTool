@@ -173,14 +173,12 @@ const mockApplicants: Applicant[] = [
 interface StoreContextType {
   applicants: Applicant[];
   updateStatus: (id: string, status: ApplicationStatus) => void;
-  currentUserId: string;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
 
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [applicants, setApplicants] = useState<Applicant[]>(mockApplicants);
-  const currentUserId = "1"; // Simulate logged-in user as applicant #1
 
   const updateStatus = (id: string, status: ApplicationStatus) => {
     setApplicants((prev) =>
@@ -189,7 +187,7 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   };
 
   return (
-    <StoreContext.Provider value={{ applicants, updateStatus, currentUserId }}>
+    <StoreContext.Provider value={{ applicants, updateStatus }}>
       {children}
     </StoreContext.Provider>
   );

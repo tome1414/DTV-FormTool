@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { useI18n } from "@/lib/i18n";
+import AuthGuard from "@/components/AuthGuard";
 
 interface UploadedFile {
   file: File;
@@ -9,58 +11,29 @@ interface UploadedFile {
 
 interface DocConfig {
   key: string;
-  label: string;
   required: boolean;
-  note?: string;
+  hasNote: boolean;
   showGuide?: boolean;
 }
 
 const DOC_CONFIGS: DocConfig[] = [
-  {
-    key: "passport",
-    label: "パスポート写真ページ",
-    required: true,
-    note: "スキャンの場合は余白をトリミングしてください。申請サイトで読み込みエラーの原因になります",
-  },
-  {
-    key: "bankStatement",
-    label: "残高証明書",
-    required: true,
-    note: "DTV要件：残高50万バーツ（約200万円）以上が必要です",
-  },
-  {
-    key: "photo",
-    label: "顔写真",
-    required: true,
-    note: "縦4.5cm × 横3.5cm、白背景、正面を向いた写真をご用意ください。帽子・サングラス不可。",
-    showGuide: true,
-  },
-  {
-    key: "driverLicense",
-    label: "運転免許証",
-    required: false,
-  },
-  {
-    key: "flightTicket",
-    label: "フライトEチケット",
-    required: false,
-  },
+  { key: "passport", required: true, hasNote: true },
+  { key: "bankStatement", required: true, hasNote: true },
+  { key: "photo", required: true, hasNote: true, showGuide: true },
+  { key: "driverLicense", required: false, hasNote: false },
+  { key: "flightTicket", required: false, hasNote: false },
 ];
 
-export default function ApplyPage() {
-  const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({
-    passport: true,
-  });
-  const [uploads, setUploads] = useState<Record<string, UploadedFile | null>>(
-    {}
-  );
+function ApplyContent() {
+  const { t } = useI18n();
+  const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({ passport: true });
+  const [uploads, setUploads] = useState<Record<string, UploadedFile | null>>({});
   const [activeTab, setActiveTab] = useState<Record<string, "upload" | "preview">>({});
   const [submitted, setSubmitted] = useState(false);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  const toggle = (key: string) => {
+  const toggle = (key: string) =>
     setOpenKeys((prev) => ({ ...prev, [key]: !prev[key] }));
-  };
 
   const handleFile = (key: string, file: File) => {
     const isImage = file.type.startsWith("image/");
@@ -86,18 +59,14 @@ export default function ApplyPage() {
   const progress = Math.round((uploadedRequired.length / requiredKeys.length) * 100);
   const canSubmit = uploadedRequired.length === requiredKeys.length;
 
-  const handleSubmit = () => {
-    setSubmitted(true);
-  };
-
   if (submitted) {
     return (
       <div className="max-w-2xl mx-auto mt-16 text-center">
         <div className="bg-green-50 border border-green-300 rounded-xl p-10">
           <div className="text-5xl mb-4">✅</div>
-          <h2 className="text-2xl font-bold text-green-800 mb-2">申請書類を送信しました</h2>
-          <p className="text-gray-600">申請番号: DTV-2024-0009</p>
-          <p className="text-gray-500 text-sm mt-2">書類の確認後、マイページでステータスをご確認いただけます。</p>
+          <h2 className="text-2xl font-bold text-green-800 mb-2">{t("apply.success_title")}</h2>
+          <p className="text-gray-600">{t("apply.success_number")}: DTV-2024-0009</p>
+          <p className="text-gray-500 text-sm mt-2">{t("apply.success_desc")}</p>
         </div>
       </div>
     );
@@ -105,14 +74,19 @@ export default function ApplyPage() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-800 mb-1">書類アップロード</h1>
-      <p className="text-gray-500 text-sm mb-6">必須書類3種類をアップロードしてください</p>
+      <h1 className="text-2xl font-bold text-gray-800 mb-1">{t("apply.title")}</h1>
+      <p className="text-gray-500 text-sm mb-6">{t("apply.subtitle")}</p>
 
       {/* Progress */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
         <div className="flex justify-between text-sm mb-2">
-          <span className="text-gray-600">必須書類の進捗</span>
-          <span className="font-semibold text-blue-700">{uploadedRequired.length} / {requiredKeys.length} 完了</span>
+          <span className="text-gray-600">{t("apply.progress_label")}</span>
+          <span className="font-semibold text-blue-700">
+            {t("apply.progress_count", {
+              uploaded: uploadedRequired.length,
+              total: requiredKeys.length,
+            })}
+          </span>
         </div>
         <div className="w-full bg-gray-200 rounded-full h-2.5">
           <div
@@ -128,9 +102,14 @@ export default function ApplyPage() {
           const isOpen = openKeys[doc.key];
           const uploaded = uploads[doc.key];
           const tab = activeTab[doc.key] || "upload";
+          const docLabel = t(`docs.${doc.key}`);
+          const docNote = doc.hasNote ? t(`docs.${doc.key}_note`) : null;
 
           return (
-            <div key={doc.key} className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden">
+            <div
+              key={doc.key}
+              className="bg-white rounded-xl border border-gray-200 shadow-sm overflow-hidden"
+            >
               {/* Header */}
               <button
                 className="w-full flex items-center justify-between px-5 py-4 hover:bg-gray-50 transition-colors"
@@ -138,15 +117,25 @@ export default function ApplyPage() {
               >
                 <div className="flex items-center gap-3">
                   {uploaded ? (
-                    <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">✓</span>
+                    <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
+                      ✓
+                    </span>
                   ) : (
-                    <span className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs ${doc.required ? "border-red-400" : "border-gray-300"}`} />
+                    <span
+                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs ${
+                        doc.required ? "border-red-400" : "border-gray-300"
+                      }`}
+                    />
                   )}
-                  <span className="font-medium text-gray-800">{doc.label}</span>
+                  <span className="font-medium text-gray-800">{docLabel}</span>
                   {doc.required ? (
-                    <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">必須</span>
+                    <span className="text-xs bg-red-100 text-red-600 px-2 py-0.5 rounded-full">
+                      {t("common.required")}
+                    </span>
                   ) : (
-                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">任意</span>
+                    <span className="text-xs bg-gray-100 text-gray-500 px-2 py-0.5 rounded-full">
+                      {t("common.optional")}
+                    </span>
                   )}
                 </div>
                 <span className="text-gray-400 text-sm">{isOpen ? "▲" : "▼"}</span>
@@ -155,10 +144,9 @@ export default function ApplyPage() {
               {/* Body */}
               {isOpen && (
                 <div className="px-5 pb-5 border-t border-gray-100">
-                  {/* Note */}
-                  {doc.note && (
+                  {docNote && (
                     <div className="mt-3 mb-3 bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-2 text-sm text-yellow-800">
-                      ⚠️ {doc.note}
+                      ⚠️ {docNote}
                     </div>
                   )}
 
@@ -166,16 +154,28 @@ export default function ApplyPage() {
                   {uploaded && (
                     <div className="flex gap-2 mt-3 mb-3">
                       <button
-                        onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "upload" }))}
-                        className={`text-sm px-3 py-1 rounded-md border transition-colors ${tab === "upload" ? "bg-blue-600 text-white border-blue-600" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+                        onClick={() =>
+                          setActiveTab((p) => ({ ...p, [doc.key]: "upload" }))
+                        }
+                        className={`text-sm px-3 py-1 rounded-md border transition-colors ${
+                          tab === "upload"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                        }`}
                       >
-                        アップロード
+                        {t("common.upload")}
                       </button>
                       <button
-                        onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "preview" }))}
-                        className={`text-sm px-3 py-1 rounded-md border transition-colors ${tab === "preview" ? "bg-blue-600 text-white border-blue-600" : "border-gray-300 text-gray-600 hover:bg-gray-50"}`}
+                        onClick={() =>
+                          setActiveTab((p) => ({ ...p, [doc.key]: "preview" }))
+                        }
+                        className={`text-sm px-3 py-1 rounded-md border transition-colors ${
+                          tab === "preview"
+                            ? "bg-blue-600 text-white border-blue-600"
+                            : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                        }`}
                       >
-                        プレビュー
+                        {t("common.preview")}
                       </button>
                     </div>
                   )}
@@ -189,10 +189,12 @@ export default function ApplyPage() {
                       onClick={() => fileRefs.current[doc.key]?.click()}
                     >
                       <div className="text-3xl mb-2">📎</div>
-                      <p className="text-gray-600 text-sm">クリックまたはドラッグ&ドロップ</p>
-                      <p className="text-gray-400 text-xs mt-1">PNG, JPG, PDF 対応</p>
+                      <p className="text-gray-600 text-sm">{t("apply.drag_drop")}</p>
+                      <p className="text-gray-400 text-xs mt-1">{t("apply.file_types")}</p>
                       <input
-                        ref={(el) => { fileRefs.current[doc.key] = el; }}
+                        ref={(el) => {
+                          fileRefs.current[doc.key] = el;
+                        }}
                         type="file"
                         className="hidden"
                         accept="image/*,.pdf"
@@ -211,7 +213,8 @@ export default function ApplyPage() {
                         <div className="relative inline-block">
                           {doc.showGuide && (
                             <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-                              <div className="border-2 border-dashed border-blue-500 opacity-60"
+                              <div
+                                className="border-2 border-dashed border-blue-500 opacity-60"
                                 style={{ width: "70px", height: "90px" }}
                               />
                             </div>
@@ -226,8 +229,12 @@ export default function ApplyPage() {
                         <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 flex items-center gap-3">
                           <span className="text-3xl">📄</span>
                           <div>
-                            <p className="font-medium text-gray-800 text-sm">{uploaded.file.name}</p>
-                            <p className="text-gray-400 text-xs">{(uploaded.file.size / 1024).toFixed(1)} KB</p>
+                            <p className="font-medium text-gray-800 text-sm">
+                              {uploaded.file.name}
+                            </p>
+                            <p className="text-gray-400 text-xs">
+                              {(uploaded.file.size / 1024).toFixed(1)} KB
+                            </p>
                           </div>
                         </div>
                       )}
@@ -236,16 +243,18 @@ export default function ApplyPage() {
                           onClick={() => fileRefs.current[doc.key]?.click()}
                           className="text-sm px-3 py-1.5 border border-blue-400 text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
                         >
-                          差し替え
+                          {t("common.replace")}
                         </button>
                         <button
                           onClick={() => handleRemove(doc.key)}
                           className="text-sm px-3 py-1.5 border border-red-300 text-red-500 rounded-md hover:bg-red-50 transition-colors"
                         >
-                          削除
+                          {t("common.delete")}
                         </button>
                         <input
-                          ref={(el) => { fileRefs.current[doc.key] = el; }}
+                          ref={(el) => {
+                            fileRefs.current[doc.key] = el;
+                          }}
                           type="file"
                           className="hidden"
                           accept="image/*,.pdf"
@@ -268,16 +277,28 @@ export default function ApplyPage() {
       <div className="mt-6">
         <button
           disabled={!canSubmit}
-          onClick={handleSubmit}
+          onClick={() => setSubmitted(true)}
           className={`w-full py-3 rounded-xl font-semibold text-white transition-colors ${
             canSubmit
               ? "bg-blue-600 hover:bg-blue-700 shadow-md"
               : "bg-gray-300 cursor-not-allowed"
           }`}
         >
-          {canSubmit ? "書類を送信する" : `必須書類をすべてアップロードしてください（残り ${requiredKeys.length - uploadedRequired.length} 件）`}
+          {canSubmit
+            ? t("apply.submit_ready")
+            : t("apply.submit_pending", {
+                count: requiredKeys.length - uploadedRequired.length,
+              })}
         </button>
       </div>
     </div>
+  );
+}
+
+export default function ApplyPage() {
+  return (
+    <AuthGuard>
+      <ApplyContent />
+    </AuthGuard>
   );
 }
