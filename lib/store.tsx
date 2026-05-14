@@ -28,6 +28,7 @@ export interface Applicant {
   status: ApplicationStatus;
   documents: Record<DocumentKey, boolean>;
   documentWarnings?: Partial<Record<DocumentKey, string>>;
+  documentApprovals?: Partial<Record<DocumentKey, boolean>>;
   notes?: string;
   submittedAt: string;
   updatedAt: string;
@@ -47,6 +48,10 @@ const mockApplicants: Applicant[] = [
     },
     documentWarnings: {
       passport: "余白が多いです。申請サイトで読み込みエラーになる可能性があります。トリミングして再提出をお願いします。",
+    },
+    documentApprovals: {
+      bankStatement: true, photo: true, driverLicense: true,
+      acceptanceLetter: true, invoice: true, existingPdfBundle: true,
     },
     submittedAt: "2024-03-01",
     updatedAt: "2024-03-12",
@@ -105,6 +110,11 @@ const mockApplicants: Applicant[] = [
       driverLicense: true, flightTicket: true, pgaLicense: true,
       acceptanceLetter: true, invoice: true, existingPdfBundle: true,
     },
+    documentApprovals: {
+      passport: true, bankStatement: true, photo: true,
+      driverLicense: true, flightTicket: true, pgaLicense: true,
+      acceptanceLetter: true, invoice: true, existingPdfBundle: true,
+    },
     submittedAt: "2024-02-20",
     updatedAt: "2024-03-01",
   },
@@ -158,6 +168,7 @@ interface StoreContextType {
   updateStatus: (id: string, status: ApplicationStatus) => void;
   updateDocument: (id: string, key: DocumentKey, value: boolean) => void;
   updateDocumentWarning: (id: string, key: DocumentKey, warning: string | null) => void;
+  approveDocument: (id: string, key: DocumentKey) => void;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -188,15 +199,32 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
       prev.map((a) => {
         if (a.id !== id) return a;
         const warnings = { ...(a.documentWarnings ?? {}) };
-        if (warning) warnings[key] = warning;
-        else delete warnings[key];
-        return { ...a, documentWarnings: warnings, updatedAt: today() };
+        const approvals = { ...(a.documentApprovals ?? {}) };
+        if (warning) {
+          warnings[key] = warning;
+          delete approvals[key]; // warning means un-approved
+        } else {
+          delete warnings[key];
+        }
+        return { ...a, documentWarnings: warnings, documentApprovals: approvals, updatedAt: today() };
+      })
+    );
+  };
+
+  const approveDocument = (id: string, key: DocumentKey) => {
+    setApplicants((prev) =>
+      prev.map((a) => {
+        if (a.id !== id) return a;
+        const approvals = { ...(a.documentApprovals ?? {}), [key]: true };
+        const warnings = { ...(a.documentWarnings ?? {}) };
+        delete warnings[key]; // clear any warning on approval
+        return { ...a, documentApprovals: approvals, documentWarnings: warnings, updatedAt: today() };
       })
     );
   };
 
   return (
-    <StoreContext.Provider value={{ applicants, updateStatus, updateDocument, updateDocumentWarning }}>
+    <StoreContext.Provider value={{ applicants, updateStatus, updateDocument, updateDocumentWarning, approveDocument }}>
       {children}
     </StoreContext.Provider>
   );

@@ -123,7 +123,7 @@ function DetailPanel({
   applicant: Applicant;
   onClose: () => void;
 }) {
-  const { updateStatus, updateDocument, updateDocumentWarning } = useStore();
+  const { updateStatus, updateDocument, updateDocumentWarning, approveDocument } = useStore();
   const { t } = useI18n();
   const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus>(applicant.status);
   const [toast, setToast] = useState<string | null>(null);
@@ -201,21 +201,38 @@ function DetailPanel({
             {DOC_DOTS.map(({ key, i18nKey }, idx) => {
               const uploaded = applicant.documents[key];
               const warning = applicant.documentWarnings?.[key];
+              const approved = applicant.documentApprovals?.[key];
               const isEditing = editingWarning === key;
+
+              // 3 states: gray=not uploaded, yellow△=pending/warning, green=approved
               const badgeColor = !uploaded
                 ? "bg-gray-100 text-gray-400"
-                : warning
-                ? "bg-yellow-400 text-white"
-                : "bg-green-500 text-white";
+                : approved
+                ? "bg-green-500 text-white"
+                : "bg-yellow-400 text-white";
 
               return (
                 <div key={key}>
                   <div className="flex items-center gap-2 py-1.5 border-b border-gray-100 last:border-0">
-                    {/* Number badge */}
-                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${badgeColor}`}>
+                    {/* Number badge — △ overlay when pending/warning */}
+                    <span className={`relative w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${badgeColor}`}>
                       {idx + 1}
                     </span>
                     <span className="text-sm text-gray-700 flex-1">{t(i18nKey)}</span>
+                    {/* Pending label */}
+                    {uploaded && !approved && !warning && (
+                      <span className="text-xs text-yellow-600 font-medium flex-shrink-0">未確認</span>
+                    )}
+                    {/* ✓ approve button — only when uploaded and not yet approved */}
+                    {uploaded && !approved && (
+                      <button
+                        onClick={() => approveDocument(applicant.id, key)}
+                        title="承認する"
+                        className="w-6 h-6 flex items-center justify-center rounded transition-colors text-gray-300 hover:text-green-500 flex-shrink-0"
+                      >
+                        <CheckCircle2 size={14} />
+                      </button>
+                    )}
                     {/* △ warning toggle — only when uploaded */}
                     {uploaded && (
                       <button
