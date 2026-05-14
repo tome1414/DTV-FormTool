@@ -36,8 +36,6 @@ const DOC_KEYS: Array<{ key: DocumentKey; required: boolean }> = [
   { key: "bankStatement", required: true },
   { key: "photo", required: true },
   { key: "driverLicense", required: true },
-  { key: "pgaLicense", required: false },
-  { key: "acceptanceLetter", required: false },
 ];
 
 // Document types: image-based vs PDF-based

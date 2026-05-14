@@ -27,6 +27,7 @@ export interface Applicant {
   email: string;
   status: ApplicationStatus;
   documents: Record<DocumentKey, boolean>;
+  documentWarnings?: Partial<Record<DocumentKey, string>>;
   notes?: string;
   submittedAt: string;
   updatedAt: string;
@@ -43,6 +44,9 @@ const mockApplicants: Applicant[] = [
       passport: true, bankStatement: true, photo: true,
       driverLicense: true, flightTicket: true, pgaLicense: false,
       acceptanceLetter: true, invoice: true, existingPdfBundle: true,
+    },
+    documentWarnings: {
+      passport: "余白が多いです。申請サイトで読み込みエラーになる可能性があります。トリミングして再提出をお願いします。",
     },
     submittedAt: "2024-03-01",
     updatedAt: "2024-03-12",
@@ -153,6 +157,7 @@ interface StoreContextType {
   applicants: Applicant[];
   updateStatus: (id: string, status: ApplicationStatus) => void;
   updateDocument: (id: string, key: DocumentKey, value: boolean) => void;
+  updateDocumentWarning: (id: string, key: DocumentKey, warning: string | null) => void;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -178,8 +183,20 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
     );
   };
 
+  const updateDocumentWarning = (id: string, key: DocumentKey, warning: string | null) => {
+    setApplicants((prev) =>
+      prev.map((a) => {
+        if (a.id !== id) return a;
+        const warnings = { ...(a.documentWarnings ?? {}) };
+        if (warning) warnings[key] = warning;
+        else delete warnings[key];
+        return { ...a, documentWarnings: warnings, updatedAt: today() };
+      })
+    );
+  };
+
   return (
-    <StoreContext.Provider value={{ applicants, updateStatus, updateDocument }}>
+    <StoreContext.Provider value={{ applicants, updateStatus, updateDocument, updateDocumentWarning }}>
       {children}
     </StoreContext.Provider>
   );

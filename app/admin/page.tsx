@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { Eye, RefreshCw, Upload, Trash2, CheckCircle2 } from "lucide-react";
+import { Eye, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import { useStore, Applicant, ApplicationStatus, DocumentKey } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
@@ -123,12 +123,14 @@ function DetailPanel({
   applicant: Applicant;
   onClose: () => void;
 }) {
-  const { updateStatus, updateDocument } = useStore();
+  const { updateStatus, updateDocument, updateDocumentWarning } = useStore();
   const { t } = useI18n();
   const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus>(applicant.status);
   const [toast, setToast] = useState<string | null>(null);
   const [adminFiles, setAdminFiles] = useState<Record<string, AdminUploadedFile | null>>({});
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [editingWarning, setEditingWarning] = useState<DocumentKey | null>(null);
+  const [warningDraft, setWarningDraft] = useState("");
 
   const handleSave = () => {
     updateStatus(applicant.id, selectedStatus);
@@ -190,20 +192,101 @@ function DetailPanel({
           </button>
         </div>
 
-        {/* Document Status (read-only overview) */}
+        {/* Document Status with numbered badges + warning */}
         <div>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
             {t("mypage.doc_list_title")}
           </p>
-          <div className="space-y-1.5">
-            {DOC_DOTS.map(({ key, i18nKey }) => (
-              <div key={key} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
-                <span className="text-sm text-gray-700">{t(i18nKey)}</span>
-                <span className={`text-sm font-bold ${applicant.documents[key] ? "text-green-600" : "text-red-400"}`}>
-                  {applicant.documents[key] ? "○" : "✕"}
-                </span>
-              </div>
-            ))}
+          <div className="space-y-1">
+            {DOC_DOTS.map(({ key, i18nKey }, idx) => {
+              const uploaded = applicant.documents[key];
+              const warning = applicant.documentWarnings?.[key];
+              const isEditing = editingWarning === key;
+              const badgeColor = !uploaded
+                ? "bg-gray-100 text-gray-400"
+                : warning
+                ? "bg-yellow-400 text-white"
+                : "bg-green-500 text-white";
+
+              return (
+                <div key={key}>
+                  <div className="flex items-center gap-2 py-1.5 border-b border-gray-100 last:border-0">
+                    {/* Number badge */}
+                    <span className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${badgeColor}`}>
+                      {idx + 1}
+                    </span>
+                    <span className="text-sm text-gray-700 flex-1">{t(i18nKey)}</span>
+                    {/* △ warning toggle — only when uploaded */}
+                    {uploaded && (
+                      <button
+                        onClick={() => {
+                          if (isEditing) {
+                            setEditingWarning(null);
+                          } else {
+                            setEditingWarning(key);
+                            setWarningDraft(warning ?? "");
+                          }
+                        }}
+                        title={warning ? "警告メモを編集" : "警告メモを追加"}
+                        className={`w-6 h-6 flex items-center justify-center rounded transition-colors flex-shrink-0 ${
+                          warning
+                            ? "text-yellow-500 hover:text-yellow-600"
+                            : "text-gray-300 hover:text-yellow-400"
+                        }`}
+                      >
+                        <AlertTriangle size={13} />
+                      </button>
+                    )}
+                    {/* Remove warning */}
+                    {warning && !isEditing && (
+                      <button
+                        onClick={() => updateDocumentWarning(applicant.id, key, null)}
+                        title="警告を削除"
+                        className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
+                      >
+                        <X size={12} />
+                      </button>
+                    )}
+                  </div>
+                  {/* Warning display */}
+                  {warning && !isEditing && (
+                    <div className="ml-7 mb-1.5 flex items-start gap-1.5 bg-yellow-50 border border-yellow-200 rounded-lg px-2.5 py-1.5">
+                      <AlertTriangle size={11} className="text-yellow-500 flex-shrink-0 mt-0.5" />
+                      <p className="text-xs text-yellow-700 leading-snug">{warning}</p>
+                    </div>
+                  )}
+                  {/* Warning edit inline */}
+                  {isEditing && (
+                    <div className="ml-7 mb-1.5 space-y-1">
+                      <textarea
+                        className="w-full text-xs border border-yellow-300 rounded-lg px-2.5 py-1.5 resize-none focus:outline-none focus:border-yellow-500 bg-yellow-50"
+                        rows={2}
+                        placeholder="警告・注意メモを入力..."
+                        value={warningDraft}
+                        onChange={(e) => setWarningDraft(e.target.value)}
+                      />
+                      <div className="flex gap-1.5">
+                        <button
+                          onClick={() => {
+                            updateDocumentWarning(applicant.id, key, warningDraft.trim() || null);
+                            setEditingWarning(null);
+                          }}
+                          className="text-xs px-2.5 py-1 bg-yellow-400 hover:bg-yellow-500 text-white rounded-md transition-colors"
+                        >
+                          保存
+                        </button>
+                        <button
+                          onClick={() => setEditingWarning(null)}
+                          className="text-xs px-2.5 py-1 border border-gray-300 text-gray-500 rounded-md hover:bg-gray-50 transition-colors"
+                        >
+                          キャンセル
+                        </button>
+                      </div>
+                    </div>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </div>
 
