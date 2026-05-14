@@ -38,6 +38,7 @@ const ja = {
     pgaLicense: "PGAライセンス",
     acceptanceLetter: "受け入れレター",
     invoice: "インボイス",
+    existingPdfBundle: "既存PDF一式",
     passport_note:
       "スキャンの場合は余白をトリミングしてください。申請サイトで読み込みエラーの原因になります",
     bankStatement_note:
@@ -101,6 +102,11 @@ const ja = {
     admin_uploaded: "アップロード済み",
     admin_replace_btn: "差し替え",
     admin_upload_success: "書類をアップロードしました",
+    existing_pdf_bundle_title: "既存PDF一式",
+    existing_pdf_bundle_desc: "申請者の既存PDF一式をアップロードしてください",
+    download_ready: "すべての書類が揃いました — ダウンロード可能",
+    download_pending_user: "申請者の書類が未完了です",
+    download_pending_admin: "管理者書類が未完了です",
     toast: "{{name}} のステータスを「{{status}}」に変更しました",
   },
   login: {

@@ -17,7 +17,8 @@ export type DocumentKey =
   | "flightTicket"
   | "pgaLicense"
   | "acceptanceLetter"
-  | "invoice";
+  | "invoice"
+  | "existingPdfBundle";
 
 export interface Applicant {
   id: string;
@@ -41,7 +42,7 @@ const mockApplicants: Applicant[] = [
     documents: {
       passport: true, bankStatement: true, photo: true,
       driverLicense: true, flightTicket: true, pgaLicense: false,
-      acceptanceLetter: true, invoice: true,
+      acceptanceLetter: true, invoice: true, existingPdfBundle: true,
     },
     submittedAt: "2024-03-01",
     updatedAt: "2024-03-12",
@@ -55,7 +56,7 @@ const mockApplicants: Applicant[] = [
     documents: {
       passport: true, bankStatement: true, photo: true,
       driverLicense: false, flightTicket: true, pgaLicense: true,
-      acceptanceLetter: true, invoice: true,
+      acceptanceLetter: true, invoice: true, existingPdfBundle: true,
     },
     submittedAt: "2024-03-03",
     updatedAt: "2024-03-14",
@@ -69,7 +70,7 @@ const mockApplicants: Applicant[] = [
     documents: {
       passport: true, bankStatement: false, photo: true,
       driverLicense: false, flightTicket: false, pgaLicense: false,
-      acceptanceLetter: false, invoice: false,
+      acceptanceLetter: false, invoice: false, existingPdfBundle: false,
     },
     notes: "残高証明書が不足しています。再提出をお願いします。",
     submittedAt: "2024-03-05",
@@ -84,7 +85,7 @@ const mockApplicants: Applicant[] = [
     documents: {
       passport: true, bankStatement: true, photo: true,
       driverLicense: true, flightTicket: false, pgaLicense: false,
-      acceptanceLetter: false, invoice: false,
+      acceptanceLetter: false, invoice: false, existingPdfBundle: false,
     },
     submittedAt: "2024-03-07",
     updatedAt: "2024-03-07",
@@ -98,7 +99,7 @@ const mockApplicants: Applicant[] = [
     documents: {
       passport: true, bankStatement: true, photo: true,
       driverLicense: true, flightTicket: true, pgaLicense: true,
-      acceptanceLetter: true, invoice: true,
+      acceptanceLetter: true, invoice: true, existingPdfBundle: true,
     },
     submittedAt: "2024-02-20",
     updatedAt: "2024-03-01",
@@ -112,7 +113,7 @@ const mockApplicants: Applicant[] = [
     documents: {
       passport: true, bankStatement: true, photo: true,
       driverLicense: false, flightTicket: true, pgaLicense: false,
-      acceptanceLetter: false, invoice: false,
+      acceptanceLetter: false, invoice: false, existingPdfBundle: false,
     },
     submittedAt: "2024-03-08",
     updatedAt: "2024-03-08",
@@ -126,7 +127,7 @@ const mockApplicants: Applicant[] = [
     documents: {
       passport: false, bankStatement: false, photo: true,
       driverLicense: false, flightTicket: false, pgaLicense: false,
-      acceptanceLetter: false, invoice: false,
+      acceptanceLetter: false, invoice: false, existingPdfBundle: false,
     },
     notes: "パスポートコピーおよび残高証明書が未提出です。",
     submittedAt: "2024-03-09",
@@ -141,7 +142,7 @@ const mockApplicants: Applicant[] = [
     documents: {
       passport: true, bankStatement: true, photo: true,
       driverLicense: true, flightTicket: true, pgaLicense: true,
-      acceptanceLetter: false, invoice: true,
+      acceptanceLetter: false, invoice: true, existingPdfBundle: true,
     },
     submittedAt: "2024-03-10",
     updatedAt: "2024-03-15",

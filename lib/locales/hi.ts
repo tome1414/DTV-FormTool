@@ -38,6 +38,7 @@ const hi = {
     pgaLicense: "PGA लाइसेंस",
     acceptanceLetter: "स्वीकृति पत्र",
     invoice: "इनवॉइस",
+    existingPdfBundle: "मौजूदा PDF बंडल",
     passport_note:
       "यदि स्कैन किया हो, तो हाशिया काट दें। अतिरिक्त सफेद जगह से साइट पर पढ़ने में त्रुटि हो सकती है।",
     bankStatement_note:
@@ -100,6 +101,11 @@ const hi = {
     admin_uploaded: "अपलोड किया",
     admin_replace_btn: "बदलें",
     admin_upload_success: "दस्तावेज़ सफलतापूर्वक अपलोड हुआ",
+    existing_pdf_bundle_title: "मौजूदा PDF बंडल",
+    existing_pdf_bundle_desc: "आवेदक के लिए मौजूदा PDF बंडल अपलोड करें",
+    download_ready: "सभी दस्तावेज़ तैयार — डाउनलोड उपलब्ध",
+    download_pending_user: "आवेदक के दस्तावेज़ अधूरे हैं",
+    download_pending_admin: "व्यवस्थापक दस्तावेज़ अधूरे हैं",
     toast: "{{name}} की स्थिति \"{{status}}\" में बदली गई",
   },
   login: {

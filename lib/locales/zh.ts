@@ -38,6 +38,7 @@ const zh = {
     pgaLicense: "PGA执照",
     acceptanceLetter: "录取通知书",
     invoice: "发票",
+    existingPdfBundle: "现有PDF文件包",
     passport_note:
       "如果是扫描件，请裁剪多余的白边，否则可能导致申请网站读取错误。",
     bankStatement_note:
@@ -100,6 +101,11 @@ const zh = {
     admin_uploaded: "已上传",
     admin_replace_btn: "替换",
     admin_upload_success: "文件上传成功",
+    existing_pdf_bundle_title: "现有PDF文件包",
+    existing_pdf_bundle_desc: "请上传申请者的现有PDF文件包",
+    download_ready: "所有文件齐备 — 可以下载",
+    download_pending_user: "申请者文件未完成",
+    download_pending_admin: "管理员文件未完成",
     toast: "{{name}} 的状态已更改为「{{status}}」",
   },
   login: {

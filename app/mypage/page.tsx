@@ -51,6 +51,7 @@ const DOC_TYPE: Record<DocumentKey, "image" | "pdf"> = {
   pgaLicense: "pdf",
   acceptanceLetter: "pdf",
   invoice: "pdf",
+  existingPdfBundle: "pdf",
 };
 
 function DocPreviewModal({

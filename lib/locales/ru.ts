@@ -38,6 +38,7 @@ const ru = {
     pgaLicense: "Лицензия PGA",
     acceptanceLetter: "Письмо-подтверждение",
     invoice: "Инвойс",
+    existingPdfBundle: "Существующий пакет PDF",
     passport_note:
       "При сканировании обрежьте поля — лишние белые края могут вызвать ошибку чтения на сайте подачи.",
     bankStatement_note:
@@ -101,6 +102,11 @@ const ru = {
     admin_uploaded: "Загружено",
     admin_replace_btn: "Заменить",
     admin_upload_success: "Документ успешно загружен",
+    existing_pdf_bundle_title: "Существующий пакет PDF",
+    existing_pdf_bundle_desc: "Загрузите существующий пакет PDF для этого заявителя",
+    download_ready: "Все документы готовы — скачивание доступно",
+    download_pending_user: "Документы заявителя не завершены",
+    download_pending_admin: "Документы администратора не завершены",
     toast: "Статус {{name}} изменён на «{{status}}»",
   },
   login: {

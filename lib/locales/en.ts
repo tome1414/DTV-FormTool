@@ -38,6 +38,7 @@ const en = {
     pgaLicense: "PGA License",
     acceptanceLetter: "Acceptance Letter",
     invoice: "Invoice",
+    existingPdfBundle: "Existing PDF Bundle",
     passport_note:
       "If scanned, please trim the margins. Excess whitespace can cause read errors on the application site.",
     bankStatement_note:
@@ -101,6 +102,11 @@ const en = {
     admin_uploaded: "Uploaded",
     admin_replace_btn: "Replace",
     admin_upload_success: "Document uploaded successfully",
+    existing_pdf_bundle_title: "Existing PDF Bundle",
+    existing_pdf_bundle_desc: "Upload the pre-compiled PDF bundle for this applicant",
+    download_ready: "All documents ready — download enabled",
+    download_pending_user: "User documents incomplete",
+    download_pending_admin: "Admin documents incomplete",
     toast: "Status of {{name}} changed to \"{{status}}\"",
   },
   login: {

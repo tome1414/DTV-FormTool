@@ -39,6 +39,7 @@ const DOC_DOTS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "pgaLicense", i18nKey: "docs.pgaLicense" },
   { key: "acceptanceLetter", i18nKey: "docs.acceptanceLetter" },
   { key: "invoice", i18nKey: "docs.invoice" },
+  { key: "existingPdfBundle", i18nKey: "docs.existingPdfBundle" },
 ];
 
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
@@ -57,11 +58,63 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
 const ADMIN_UPLOAD_DOCS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "invoice", i18nKey: "docs.invoice" },
   { key: "acceptanceLetter", i18nKey: "docs.acceptanceLetter" },
+  { key: "existingPdfBundle", i18nKey: "docs.existingPdfBundle" },
 ];
+
+const USER_DOC_KEYS: DocumentKey[] = ["passport", "bankStatement", "photo"];
+const ADMIN_DOC_KEYS: DocumentKey[] = ["invoice", "acceptanceLetter", "existingPdfBundle"];
 
 interface AdminUploadedFile {
   name: string;
   size: number;
+}
+
+function DownloadSection({
+  applicant,
+  t,
+}: {
+  applicant: Applicant;
+  t: (key: string, vars?: Record<string, string>) => string;
+}) {
+  const userReady = USER_DOC_KEYS.every((k) => applicant.documents[k]);
+  const adminReady = ADMIN_DOC_KEYS.every((k) => applicant.documents[k]);
+  const canDownload = userReady && adminReady;
+
+  return (
+    <div className="rounded-lg border border-gray-200 overflow-hidden">
+      {/* Checklist */}
+      <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 space-y-1">
+        <div className="flex items-center gap-2 text-xs">
+          <span className={userReady ? "text-green-500" : "text-red-400"}>
+            {userReady ? "✓" : "✕"}
+          </span>
+          <span className={userReady ? "text-gray-600" : "text-red-500"}>
+            {t("admin.download_pending_user")}
+            {userReady && ` — OK`}
+          </span>
+        </div>
+        <div className="flex items-center gap-2 text-xs">
+          <span className={adminReady ? "text-green-500" : "text-red-400"}>
+            {adminReady ? "✓" : "✕"}
+          </span>
+          <span className={adminReady ? "text-gray-600" : "text-red-500"}>
+            {t("admin.download_pending_admin")}
+            {adminReady && ` — OK`}
+          </span>
+        </div>
+      </div>
+      <button
+        disabled={!canDownload}
+        className={`w-full text-sm py-2 transition-colors font-medium ${
+          canDownload
+            ? "bg-blue-600 hover:bg-blue-700 text-white"
+            : "bg-gray-100 text-gray-400 cursor-not-allowed"
+        }`}
+      >
+        {canDownload ? t("admin.download_ready") : t("admin.download_pdf")}
+      </button>
+    </div>
+  );
 }
 
 function DetailPanel({
@@ -246,9 +299,7 @@ function DetailPanel({
           <button className="w-full border border-orange-300 text-orange-600 text-sm py-2 rounded-lg hover:bg-orange-50 transition-colors">
             {t("admin.notify")}
           </button>
-          <button className="w-full border border-gray-300 text-gray-600 text-sm py-2 rounded-lg hover:bg-gray-50 transition-colors">
-            {t("admin.download_pdf")}
-          </button>
+          <DownloadSection applicant={applicant} t={t} />
         </div>
       </div>
 

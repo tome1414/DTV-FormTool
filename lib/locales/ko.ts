@@ -38,6 +38,7 @@ const ko = {
     pgaLicense: "PGA 라이선스",
     acceptanceLetter: "수락 서한",
     invoice: "인보이스",
+    existingPdfBundle: "기존 PDF 일괄 파일",
     passport_note:
       "스캔 시 여백을 잘라주세요. 여백이 남으면 신청 사이트에서 읽기 오류가 발생할 수 있습니다.",
     bankStatement_note:
@@ -100,6 +101,11 @@ const ko = {
     admin_uploaded: "업로드됨",
     admin_replace_btn: "교체",
     admin_upload_success: "서류가 업로드되었습니다",
+    existing_pdf_bundle_title: "기존 PDF 일괄 파일",
+    existing_pdf_bundle_desc: "신청자의 기존 PDF 일괄 파일을 업로드하세요",
+    download_ready: "모든 서류 준비 완료 — 다운로드 가능",
+    download_pending_user: "신청자 서류가 미완성입니다",
+    download_pending_admin: "관리자 서류가 미완성입니다",
     toast: "{{name}}의 상태가 \"{{status}}\"로 변경되었습니다",
   },
   login: {
