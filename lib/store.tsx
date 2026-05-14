@@ -30,6 +30,8 @@ export interface Applicant {
   documentWarnings?: Partial<Record<DocumentKey, string>>;
   documentApprovals?: Partial<Record<DocumentKey, boolean>>;
   notes?: string;
+  nationality?: string;
+  consulateId?: string;
   submittedAt: string;
   updatedAt: string;
 }
@@ -40,6 +42,8 @@ const mockApplicants: Applicant[] = [
     applicationNumber: "DTV-2024-0001",
     name: "田中 太郎",
     email: "tanaka@example.com",
+    nationality: "日本",
+    consulateId: "jp-tokyo",
     status: "提出準備完了",
     documents: {
       passport: true, bankStatement: true, photo: true,
@@ -61,6 +65,8 @@ const mockApplicants: Applicant[] = [
     applicationNumber: "DTV-2024-0002",
     name: "鈴木 花子",
     email: "suzuki@example.com",
+    nationality: "日本",
+    consulateId: "vn-hanoi",
     status: "レビュー中",
     documents: {
       passport: true, bankStatement: true, photo: true,

@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { AlertTriangle, Loader2 } from "lucide-react";
+import { AlertTriangle, Loader2, ExternalLink } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
 import { checkPassportMargin, checkPhotoBackground, type AnalysisWarning } from "@/lib/imageAnalysis";
+import { CONSULATE_REGIONS, findConsulateById, type Consulate } from "@/lib/consulateData";
 import AuthGuard from "@/components/AuthGuard";
 
 interface UploadedFile {
@@ -34,6 +35,17 @@ function ApplyContent() {
   const [imageWarnings, setImageWarnings] = useState<Record<string, AnalysisWarning | null>>({});
   const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({});
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+
+  // Applicant info form
+  const [nationality, setNationality] = useState("");
+  const [selectedRegion, setSelectedRegion] = useState("");
+  const [selectedCountry, setSelectedCountry] = useState("");
+  const [selectedConsulateId, setSelectedConsulateId] = useState("");
+
+  const regionData = CONSULATE_REGIONS.find((r) => r.id === selectedRegion);
+  const countryData = regionData?.countries.find((c) => c.country_ja === selectedCountry);
+  const consulateInfo: (Consulate & { country_ja: string; country_en: string; region_ja: string }) | null =
+    selectedConsulateId ? findConsulateById(selectedConsulateId) : null;
 
   const toggle = (key: string) =>
     setOpenKeys((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -81,6 +93,11 @@ function ApplyContent() {
           <h2 className="text-2xl font-bold text-green-800 mb-2">{t("apply.success_title")}</h2>
           <p className="text-gray-600">{t("apply.success_number")}: DTV-2024-0009</p>
           <p className="text-gray-500 text-sm mt-2">{t("apply.success_desc")}</p>
+          {consulateInfo && (
+            <p className="text-gray-400 text-xs mt-3">
+              申請先：{consulateInfo.name_ja}
+            </p>
+          )}
         </div>
       </div>
     );
@@ -90,6 +107,92 @@ function ApplyContent() {
     <div className="max-w-2xl mx-auto">
       <h1 className="text-2xl font-bold text-gray-800 mb-1">{t("apply.title")}</h1>
       <p className="text-gray-500 text-sm mb-6">{t("apply.subtitle")}</p>
+
+      {/* ── Applicant Info Form ── */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
+        <h2 className="text-sm font-semibold text-gray-700 mb-4">申請者情報</h2>
+
+        {/* Nationality */}
+        <div className="mb-4">
+          <label className="block text-xs font-medium text-gray-500 mb-1">国籍</label>
+          <input
+            type="text"
+            value={nationality}
+            onChange={(e) => setNationality(e.target.value)}
+            placeholder="例：日本、韓国、中国..."
+            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
+          />
+        </div>
+
+        {/* Consulate cascade */}
+        <div className="mb-1">
+          <label className="block text-xs font-medium text-gray-500 mb-1">申請予定の領事館</label>
+          <div className="grid grid-cols-3 gap-2">
+            {/* Region */}
+            <select
+              value={selectedRegion}
+              onChange={(e) => { setSelectedRegion(e.target.value); setSelectedCountry(""); setSelectedConsulateId(""); }}
+              className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white"
+            >
+              <option value="">地域を選択</option>
+              {CONSULATE_REGIONS.map((r) => (
+                <option key={r.id} value={r.id}>{r.label_ja}</option>
+              ))}
+            </select>
+
+            {/* Country */}
+            <select
+              value={selectedCountry}
+              onChange={(e) => { setSelectedCountry(e.target.value); setSelectedConsulateId(""); }}
+              disabled={!selectedRegion}
+              className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">国を選択</option>
+              {regionData?.countries.map((c) => (
+                <option key={c.country_ja} value={c.country_ja}>{c.country_ja}</option>
+              ))}
+            </select>
+
+            {/* Consulate */}
+            <select
+              value={selectedConsulateId}
+              onChange={(e) => setSelectedConsulateId(e.target.value)}
+              disabled={!selectedCountry}
+              className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+            >
+              <option value="">公館を選択</option>
+              {countryData?.consulates.map((c) => (
+                <option key={c.id} value={c.id}>{c.type}（{c.city_ja}）</option>
+              ))}
+            </select>
+          </div>
+        </div>
+
+        {/* Selected consulate info card */}
+        {consulateInfo && (
+          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
+            <p className="text-xs font-semibold text-blue-800 mb-0.5">{consulateInfo.name_ja}</p>
+            <p className="text-xs text-blue-600 mb-2">{consulateInfo.name_en}</p>
+            {consulateInfo.note && (
+              <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 mb-2">
+                ⚠️ {consulateInfo.note}
+              </p>
+            )}
+            <a
+              href={consulateInfo.url}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
+            >
+              <ExternalLink size={11} />
+              公式サイトで最新情報を確認する
+            </a>
+            <p className="text-xs text-gray-400 mt-1">
+              ※ 管轄・居住地要件・必要書類・手数料・予約要否は各公館の公式サイトでご確認ください
+            </p>
+          </div>
+        )}
+      </div>
 
       {/* Progress */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">

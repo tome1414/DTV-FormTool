@@ -3,6 +3,7 @@
 import { useState, useRef } from "react";
 import { Eye, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle, X } from "lucide-react";
 import { useStore, Applicant, ApplicationStatus, DocumentKey } from "@/lib/store";
+import { findConsulateById } from "@/lib/consulateData";
 import { useI18n } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
 
@@ -168,6 +169,19 @@ function DetailPanel({
           <p className="font-bold text-gray-800">{applicant.applicationNumber}</p>
           <p className="text-sm text-gray-600 mt-1">{applicant.name}</p>
           <p className="text-xs text-gray-400">{applicant.email}</p>
+          {(applicant.nationality || applicant.consulateId) && (
+            <div className="mt-2 bg-gray-50 rounded-lg px-3 py-2 space-y-0.5">
+              {applicant.nationality && (
+                <p className="text-xs text-gray-500">国籍：<span className="text-gray-700 font-medium">{applicant.nationality}</span></p>
+              )}
+              {applicant.consulateId && (() => {
+                const c = findConsulateById(applicant.consulateId!);
+                return c ? (
+                  <p className="text-xs text-gray-500">申請先：<span className="text-gray-700 font-medium">{c.name_ja}</span></p>
+                ) : null;
+              })()}
+            </div>
+          )}
         </div>
 
         {/* Status Change */}
