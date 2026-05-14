@@ -36,6 +36,7 @@ const en = {
     flightTicket: "Flight E-Ticket",
     pgaLicense: "PGA License",
     acceptanceLetter: "Acceptance Letter",
+    invoice: "Invoice",
     passport_note:
       "If scanned, please trim the margins. Excess whitespace can cause read errors on the application site.",
     bankStatement_note:
@@ -93,6 +94,12 @@ const en = {
     status_change: "Change Status",
     notify: "Send Missing Docs Notice",
     download_pdf: "Download PDF",
+    admin_upload_title: "Admin Document Upload",
+    admin_upload_desc: "Upload documents on behalf of the applicant",
+    admin_upload_btn: "Upload",
+    admin_uploaded: "Uploaded",
+    admin_replace_btn: "Replace",
+    admin_upload_success: "Document uploaded successfully",
     toast: "Status of {{name}} changed to \"{{status}}\"",
   },
   login: {

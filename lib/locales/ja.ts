@@ -36,6 +36,7 @@ const ja = {
     flightTicket: "フライトEチケット",
     pgaLicense: "PGAライセンス",
     acceptanceLetter: "受け入れレター",
+    invoice: "インボイス",
     passport_note:
       "スキャンの場合は余白をトリミングしてください。申請サイトで読み込みエラーの原因になります",
     bankStatement_note:
@@ -93,6 +94,12 @@ const ja = {
     status_change: "ステータス変更",
     notify: "不備通知を送る",
     download_pdf: "PDFをダウンロード",
+    admin_upload_title: "管理者書類アップロード",
+    admin_upload_desc: "申請者に代わって書類をアップロードします",
+    admin_upload_btn: "アップロード",
+    admin_uploaded: "アップロード済み",
+    admin_replace_btn: "差し替え",
+    admin_upload_success: "書類をアップロードしました",
     toast: "{{name}} のステータスを「{{status}}」に変更しました",
   },
   login: {

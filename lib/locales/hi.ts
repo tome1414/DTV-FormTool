@@ -36,6 +36,7 @@ const hi = {
     flightTicket: "फ्लाइट ई-टिकट",
     pgaLicense: "PGA लाइसेंस",
     acceptanceLetter: "स्वीकृति पत्र",
+    invoice: "इनवॉइस",
     passport_note:
       "यदि स्कैन किया हो, तो हाशिया काट दें। अतिरिक्त सफेद जगह से साइट पर पढ़ने में त्रुटि हो सकती है।",
     bankStatement_note:
@@ -92,6 +93,12 @@ const hi = {
     status_change: "स्थिति बदलें",
     notify: "दस्तावेज़ अपर्याप्त सूचना भेजें",
     download_pdf: "PDF डाउनलोड करें",
+    admin_upload_title: "व्यवस्थापक दस्तावेज़ अपलोड",
+    admin_upload_desc: "आवेदक की ओर से दस्तावेज़ अपलोड करें",
+    admin_upload_btn: "अपलोड",
+    admin_uploaded: "अपलोड किया",
+    admin_replace_btn: "बदलें",
+    admin_upload_success: "दस्तावेज़ सफलतापूर्वक अपलोड हुआ",
     toast: "{{name}} की स्थिति \"{{status}}\" में बदली गई",
   },
   login: {

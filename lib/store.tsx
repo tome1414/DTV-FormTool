@@ -16,7 +16,8 @@ export type DocumentKey =
   | "driverLicense"
   | "flightTicket"
   | "pgaLicense"
-  | "acceptanceLetter";
+  | "acceptanceLetter"
+  | "invoice";
 
 export interface Applicant {
   id: string;
@@ -38,13 +39,9 @@ const mockApplicants: Applicant[] = [
     email: "tanaka@example.com",
     status: "提出準備完了",
     documents: {
-      passport: true,
-      bankStatement: true,
-      photo: true,
-      driverLicense: true,
-      flightTicket: true,
-      pgaLicense: false,
-      acceptanceLetter: false,
+      passport: true, bankStatement: true, photo: true,
+      driverLicense: true, flightTicket: true, pgaLicense: false,
+      acceptanceLetter: true, invoice: true,
     },
     submittedAt: "2024-03-01",
     updatedAt: "2024-03-12",
@@ -56,13 +53,9 @@ const mockApplicants: Applicant[] = [
     email: "suzuki@example.com",
     status: "レビュー中",
     documents: {
-      passport: true,
-      bankStatement: true,
-      photo: true,
-      driverLicense: false,
-      flightTicket: true,
-      pgaLicense: true,
-      acceptanceLetter: true,
+      passport: true, bankStatement: true, photo: true,
+      driverLicense: false, flightTicket: true, pgaLicense: true,
+      acceptanceLetter: true, invoice: true,
     },
     submittedAt: "2024-03-03",
     updatedAt: "2024-03-14",
@@ -74,13 +67,9 @@ const mockApplicants: Applicant[] = [
     email: "sato@example.com",
     status: "書類不足",
     documents: {
-      passport: true,
-      bankStatement: false,
-      photo: true,
-      driverLicense: false,
-      flightTicket: false,
-      pgaLicense: false,
-      acceptanceLetter: false,
+      passport: true, bankStatement: false, photo: true,
+      driverLicense: false, flightTicket: false, pgaLicense: false,
+      acceptanceLetter: false, invoice: false,
     },
     notes: "残高証明書が不足しています。再提出をお願いします。",
     submittedAt: "2024-03-05",
@@ -93,13 +82,9 @@ const mockApplicants: Applicant[] = [
     email: "yamada@example.com",
     status: "確認待ち",
     documents: {
-      passport: true,
-      bankStatement: true,
-      photo: true,
-      driverLicense: true,
-      flightTicket: false,
-      pgaLicense: false,
-      acceptanceLetter: false,
+      passport: true, bankStatement: true, photo: true,
+      driverLicense: true, flightTicket: false, pgaLicense: false,
+      acceptanceLetter: false, invoice: false,
     },
     submittedAt: "2024-03-07",
     updatedAt: "2024-03-07",
@@ -111,13 +96,9 @@ const mockApplicants: Applicant[] = [
     email: "ito@example.com",
     status: "大使館提出済み",
     documents: {
-      passport: true,
-      bankStatement: true,
-      photo: true,
-      driverLicense: true,
-      flightTicket: true,
-      pgaLicense: true,
-      acceptanceLetter: true,
+      passport: true, bankStatement: true, photo: true,
+      driverLicense: true, flightTicket: true, pgaLicense: true,
+      acceptanceLetter: true, invoice: true,
     },
     submittedAt: "2024-02-20",
     updatedAt: "2024-03-01",
@@ -129,13 +110,9 @@ const mockApplicants: Applicant[] = [
     email: "watanabe@example.com",
     status: "確認待ち",
     documents: {
-      passport: true,
-      bankStatement: true,
-      photo: true,
-      driverLicense: false,
-      flightTicket: true,
-      pgaLicense: false,
-      acceptanceLetter: false,
+      passport: true, bankStatement: true, photo: true,
+      driverLicense: false, flightTicket: true, pgaLicense: false,
+      acceptanceLetter: false, invoice: false,
     },
     submittedAt: "2024-03-08",
     updatedAt: "2024-03-08",
@@ -147,13 +124,9 @@ const mockApplicants: Applicant[] = [
     email: "nakamura@example.com",
     status: "書類不足",
     documents: {
-      passport: false,
-      bankStatement: false,
-      photo: true,
-      driverLicense: false,
-      flightTicket: false,
-      pgaLicense: false,
-      acceptanceLetter: false,
+      passport: false, bankStatement: false, photo: true,
+      driverLicense: false, flightTicket: false, pgaLicense: false,
+      acceptanceLetter: false, invoice: false,
     },
     notes: "パスポートコピーおよび残高証明書が未提出です。",
     submittedAt: "2024-03-09",
@@ -166,13 +139,9 @@ const mockApplicants: Applicant[] = [
     email: "kobayashi@example.com",
     status: "レビュー中",
     documents: {
-      passport: true,
-      bankStatement: true,
-      photo: true,
-      driverLicense: true,
-      flightTicket: true,
-      pgaLicense: true,
-      acceptanceLetter: false,
+      passport: true, bankStatement: true, photo: true,
+      driverLicense: true, flightTicket: true, pgaLicense: true,
+      acceptanceLetter: false, invoice: true,
     },
     submittedAt: "2024-03-10",
     updatedAt: "2024-03-15",
@@ -182,6 +151,7 @@ const mockApplicants: Applicant[] = [
 interface StoreContextType {
   applicants: Applicant[];
   updateStatus: (id: string, status: ApplicationStatus) => void;
+  updateDocument: (id: string, key: DocumentKey, value: boolean) => void;
 }
 
 const StoreContext = createContext<StoreContextType | null>(null);
@@ -189,15 +159,26 @@ const StoreContext = createContext<StoreContextType | null>(null);
 export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [applicants, setApplicants] = useState<Applicant[]>(mockApplicants);
 
+  const today = () => new Date().toISOString().split("T")[0];
+
   const updateStatus = (id: string, status: ApplicationStatus) => {
-    const today = new Date().toISOString().split("T")[0];
     setApplicants((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status, updatedAt: today } : a))
+      prev.map((a) => (a.id === id ? { ...a, status, updatedAt: today() } : a))
+    );
+  };
+
+  const updateDocument = (id: string, key: DocumentKey, value: boolean) => {
+    setApplicants((prev) =>
+      prev.map((a) =>
+        a.id === id
+          ? { ...a, documents: { ...a.documents, [key]: value }, updatedAt: today() }
+          : a
+      )
     );
   };
 
   return (
-    <StoreContext.Provider value={{ applicants, updateStatus }}>
+    <StoreContext.Provider value={{ applicants, updateStatus, updateDocument }}>
       {children}
     </StoreContext.Provider>
   );

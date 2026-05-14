@@ -36,6 +36,7 @@ const zh = {
     flightTicket: "机票电子客票",
     pgaLicense: "PGA执照",
     acceptanceLetter: "录取通知书",
+    invoice: "发票",
     passport_note:
       "如果是扫描件，请裁剪多余的白边，否则可能导致申请网站读取错误。",
     bankStatement_note:
@@ -92,6 +93,12 @@ const zh = {
     status_change: "修改状态",
     notify: "发送文件不足通知",
     download_pdf: "下载PDF",
+    admin_upload_title: "管理员文件上传",
+    admin_upload_desc: "代表申请者上传文件",
+    admin_upload_btn: "上传",
+    admin_uploaded: "已上传",
+    admin_replace_btn: "替换",
+    admin_upload_success: "文件上传成功",
     toast: "{{name}} 的状态已更改为「{{status}}」",
   },
   login: {

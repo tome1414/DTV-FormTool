@@ -36,6 +36,7 @@ const ru = {
     flightTicket: "Электронный авиабилет",
     pgaLicense: "Лицензия PGA",
     acceptanceLetter: "Письмо-подтверждение",
+    invoice: "Инвойс",
     passport_note:
       "При сканировании обрежьте поля — лишние белые края могут вызвать ошибку чтения на сайте подачи.",
     bankStatement_note:
@@ -93,6 +94,12 @@ const ru = {
     status_change: "Изменить статус",
     notify: "Отправить уведомление о неполных документах",
     download_pdf: "Скачать PDF",
+    admin_upload_title: "Загрузка документов администратором",
+    admin_upload_desc: "Загрузите документы от имени заявителя",
+    admin_upload_btn: "Загрузить",
+    admin_uploaded: "Загружено",
+    admin_replace_btn: "Заменить",
+    admin_upload_success: "Документ успешно загружен",
     toast: "Статус {{name}} изменён на «{{status}}»",
   },
   login: {

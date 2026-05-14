@@ -49,6 +49,7 @@ const DOC_TYPE: Record<DocumentKey, "image" | "pdf"> = {
   flightTicket: "pdf",
   pgaLicense: "pdf",
   acceptanceLetter: "pdf",
+  invoice: "pdf",
 };
 
 function DocPreviewModal({

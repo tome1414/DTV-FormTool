@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { useStore, Applicant, ApplicationStatus, DocumentKey } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
@@ -37,6 +37,7 @@ const DOC_DOTS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "flightTicket", i18nKey: "docs.flightTicket" },
   { key: "pgaLicense", i18nKey: "docs.pgaLicense" },
   { key: "acceptanceLetter", i18nKey: "docs.acceptanceLetter" },
+  { key: "invoice", i18nKey: "docs.invoice" },
 ];
 
 function Toast({ message, onClose }: { message: string; onClose: () => void }) {
@@ -51,6 +52,17 @@ function Toast({ message, onClose }: { message: string; onClose: () => void }) {
   );
 }
 
+// Documents the admin uploads on behalf of the applicant
+const ADMIN_UPLOAD_DOCS: { key: DocumentKey; i18nKey: string }[] = [
+  { key: "invoice", i18nKey: "docs.invoice" },
+  { key: "acceptanceLetter", i18nKey: "docs.acceptanceLetter" },
+];
+
+interface AdminUploadedFile {
+  name: string;
+  size: number;
+}
+
 function DetailPanel({
   applicant,
   onClose,
@@ -58,22 +70,30 @@ function DetailPanel({
   applicant: Applicant;
   onClose: () => void;
 }) {
-  const { updateStatus } = useStore();
+  const { updateStatus, updateDocument } = useStore();
   const { t } = useI18n();
-  const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus>(
-    applicant.status
-  );
+  const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus>(applicant.status);
   const [toast, setToast] = useState<string | null>(null);
+  const [adminFiles, setAdminFiles] = useState<Record<string, AdminUploadedFile | null>>({});
+  const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const handleSave = () => {
     updateStatus(applicant.id, selectedStatus);
-    setToast(
-      t("admin.toast", {
-        name: applicant.name,
-        status: t(STATUS_I18N[selectedStatus]),
-      })
-    );
+    setToast(t("admin.toast", { name: applicant.name, status: t(STATUS_I18N[selectedStatus]) }));
     setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleAdminFile = (key: DocumentKey, file: File) => {
+    setAdminFiles((prev) => ({ ...prev, [key]: { name: file.name, size: file.size } }));
+    updateDocument(applicant.id, key, true);
+    setToast(t("admin.admin_upload_success"));
+    setTimeout(() => setToast(null), 3000);
+  };
+
+  const handleAdminRemove = (key: DocumentKey) => {
+    setAdminFiles((prev) => ({ ...prev, [key]: null }));
+    updateDocument(applicant.id, key, false);
+    if (fileRefs.current[key]) fileRefs.current[key]!.value = "";
   };
 
   return (
@@ -81,10 +101,7 @@ function DetailPanel({
       {/* Header */}
       <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
         <h2 className="font-bold text-gray-800">{t("admin.detail_title")}</h2>
-        <button
-          onClick={onClose}
-          className="text-gray-400 hover:text-gray-700 text-xl leading-none"
-        >
+        <button onClick={onClose} className="text-gray-400 hover:text-gray-700 text-xl leading-none">
           ✕
         </button>
       </div>
@@ -109,9 +126,7 @@ function DetailPanel({
             className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white"
           >
             {ALL_STATUSES.map((s) => (
-              <option key={s} value={s}>
-                {t(STATUS_I18N[s])}
-              </option>
+              <option key={s} value={s}>{t(STATUS_I18N[s])}</option>
             ))}
           </select>
           <button
@@ -122,27 +137,106 @@ function DetailPanel({
           </button>
         </div>
 
-        {/* Document List */}
+        {/* Document Status (read-only overview) */}
         <div>
           <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-2">
             {t("mypage.doc_list_title")}
           </p>
           <div className="space-y-1.5">
             {DOC_DOTS.map(({ key, i18nKey }) => (
-              <div
-                key={key}
-                className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0"
-              >
+              <div key={key} className="flex items-center justify-between py-1.5 border-b border-gray-100 last:border-0">
                 <span className="text-sm text-gray-700">{t(i18nKey)}</span>
-                <span
-                  className={`text-sm font-bold ${
-                    applicant.documents[key] ? "text-green-600" : "text-red-400"
-                  }`}
-                >
+                <span className={`text-sm font-bold ${applicant.documents[key] ? "text-green-600" : "text-red-400"}`}>
                   {applicant.documents[key] ? "○" : "✕"}
                 </span>
               </div>
             ))}
+          </div>
+        </div>
+
+        {/* ── Admin Document Upload ── */}
+        <div className="border border-blue-200 rounded-xl bg-blue-50 p-4">
+          <div className="flex items-center gap-2 mb-1">
+            <span className="text-blue-600 text-base">📁</span>
+            <p className="text-xs font-semibold text-blue-700 uppercase tracking-wide">
+              {t("admin.admin_upload_title")}
+            </p>
+          </div>
+          <p className="text-xs text-blue-500 mb-4">{t("admin.admin_upload_desc")}</p>
+
+          <div className="space-y-3">
+            {ADMIN_UPLOAD_DOCS.map(({ key, i18nKey }) => {
+              const uploaded = adminFiles[key] || (applicant.documents[key] ? { name: "既存ファイル", size: 0 } : null);
+              return (
+                <div key={key} className="bg-white rounded-lg border border-blue-100 p-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <span className="text-sm font-medium text-gray-700">{t(i18nKey)}</span>
+                    {uploaded ? (
+                      <span className="text-xs bg-green-100 text-green-700 px-2 py-0.5 rounded-full font-medium">
+                        {t("admin.admin_uploaded")}
+                      </span>
+                    ) : (
+                      <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">
+                        未アップロード
+                      </span>
+                    )}
+                  </div>
+
+                  {uploaded ? (
+                    <div className="flex items-center gap-2 mt-1">
+                      <div className="flex items-center gap-2 flex-1 bg-gray-50 rounded px-2 py-1.5 min-w-0">
+                        <span className="text-red-400 text-sm flex-shrink-0">📄</span>
+                        <span className="text-xs text-gray-600 truncate">{uploaded.name}</span>
+                        {uploaded.size > 0 && (
+                          <span className="text-xs text-gray-400 flex-shrink-0">
+                            {(uploaded.size / 1024).toFixed(0)}KB
+                          </span>
+                        )}
+                      </div>
+                      <button
+                        onClick={() => fileRefs.current[key]?.click()}
+                        className="text-xs px-2 py-1.5 border border-blue-300 text-blue-600 rounded hover:bg-blue-50 transition-colors flex-shrink-0"
+                      >
+                        {t("admin.admin_replace_btn")}
+                      </button>
+                      <button
+                        onClick={() => handleAdminRemove(key)}
+                        className="text-xs px-2 py-1.5 border border-red-200 text-red-400 rounded hover:bg-red-50 transition-colors flex-shrink-0"
+                      >
+                        削除
+                      </button>
+                    </div>
+                  ) : (
+                    <div
+                      className="border-2 border-dashed border-blue-200 rounded-lg p-3 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
+                      onClick={() => fileRefs.current[key]?.click()}
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer.files[0];
+                        if (file) handleAdminFile(key, file);
+                      }}
+                    >
+                      <p className="text-xs text-blue-500">
+                        クリックまたはドラッグ&ドロップ
+                      </p>
+                      <p className="text-xs text-gray-400 mt-0.5">PDF, PNG, JPG</p>
+                    </div>
+                  )}
+
+                  <input
+                    ref={(el) => { fileRefs.current[key] = el; }}
+                    type="file"
+                    className="hidden"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleAdminFile(key, file);
+                    }}
+                  />
+                </div>
+              );
+            })}
           </div>
         </div>
 

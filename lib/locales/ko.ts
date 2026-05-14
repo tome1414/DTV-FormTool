@@ -36,6 +36,7 @@ const ko = {
     flightTicket: "항공권 이티켓",
     pgaLicense: "PGA 라이선스",
     acceptanceLetter: "수락 서한",
+    invoice: "인보이스",
     passport_note:
       "스캔 시 여백을 잘라주세요. 여백이 남으면 신청 사이트에서 읽기 오류가 발생할 수 있습니다.",
     bankStatement_note:
@@ -92,6 +93,12 @@ const ko = {
     status_change: "상태 변경",
     notify: "서류 부족 알림 보내기",
     download_pdf: "PDF 다운로드",
+    admin_upload_title: "관리자 서류 업로드",
+    admin_upload_desc: "신청자를 대신하여 서류를 업로드합니다",
+    admin_upload_btn: "업로드",
+    admin_uploaded: "업로드됨",
+    admin_replace_btn: "교체",
+    admin_upload_success: "서류가 업로드되었습니다",
     toast: "{{name}}의 상태가 \"{{status}}\"로 변경되었습니다",
   },
   login: {
