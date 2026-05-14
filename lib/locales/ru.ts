@@ -87,6 +87,7 @@ const ru = {
     col_status: "Статус",
     col_docs: "Документы",
     col_date: "Дата",
+    col_updated: "Обновлено",
     no_results: "Заявители по вашему запросу не найдены",
     detail_title: "Детали заявки",
     status_change: "Изменить статус",

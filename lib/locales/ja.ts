@@ -87,6 +87,7 @@ const ja = {
     col_status: "ステータス",
     col_docs: "書類状況",
     col_date: "申請日",
+    col_updated: "更新日",
     no_results: "該当する申請者が見つかりません",
     detail_title: "申請詳細",
     status_change: "ステータス変更",

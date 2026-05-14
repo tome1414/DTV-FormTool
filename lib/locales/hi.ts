@@ -86,6 +86,7 @@ const hi = {
     col_status: "स्थिति",
     col_docs: "दस्तावेज़",
     col_date: "तिथि",
+    col_updated: "अपडेट तिथि",
     no_results: "आपके मानदंड से मिलता कोई आवेदक नहीं मिला",
     detail_title: "आवेदन विवरण",
     status_change: "स्थिति बदलें",

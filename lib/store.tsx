@@ -27,6 +27,7 @@ export interface Applicant {
   documents: Record<DocumentKey, boolean>;
   notes?: string;
   submittedAt: string;
+  updatedAt: string;
 }
 
 const mockApplicants: Applicant[] = [
@@ -46,6 +47,7 @@ const mockApplicants: Applicant[] = [
       acceptanceLetter: false,
     },
     submittedAt: "2024-03-01",
+    updatedAt: "2024-03-12",
   },
   {
     id: "2",
@@ -63,6 +65,7 @@ const mockApplicants: Applicant[] = [
       acceptanceLetter: true,
     },
     submittedAt: "2024-03-03",
+    updatedAt: "2024-03-14",
   },
   {
     id: "3",
@@ -81,6 +84,7 @@ const mockApplicants: Applicant[] = [
     },
     notes: "残高証明書が不足しています。再提出をお願いします。",
     submittedAt: "2024-03-05",
+    updatedAt: "2024-03-11",
   },
   {
     id: "4",
@@ -98,6 +102,7 @@ const mockApplicants: Applicant[] = [
       acceptanceLetter: false,
     },
     submittedAt: "2024-03-07",
+    updatedAt: "2024-03-07",
   },
   {
     id: "5",
@@ -115,6 +120,7 @@ const mockApplicants: Applicant[] = [
       acceptanceLetter: true,
     },
     submittedAt: "2024-02-20",
+    updatedAt: "2024-03-01",
   },
   {
     id: "6",
@@ -132,6 +138,7 @@ const mockApplicants: Applicant[] = [
       acceptanceLetter: false,
     },
     submittedAt: "2024-03-08",
+    updatedAt: "2024-03-08",
   },
   {
     id: "7",
@@ -150,6 +157,7 @@ const mockApplicants: Applicant[] = [
     },
     notes: "パスポートコピーおよび残高証明書が未提出です。",
     submittedAt: "2024-03-09",
+    updatedAt: "2024-03-13",
   },
   {
     id: "8",
@@ -167,6 +175,7 @@ const mockApplicants: Applicant[] = [
       acceptanceLetter: false,
     },
     submittedAt: "2024-03-10",
+    updatedAt: "2024-03-15",
   },
 ];
 
@@ -181,8 +190,9 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   const [applicants, setApplicants] = useState<Applicant[]>(mockApplicants);
 
   const updateStatus = (id: string, status: ApplicationStatus) => {
+    const today = new Date().toISOString().split("T")[0];
     setApplicants((prev) =>
-      prev.map((a) => (a.id === id ? { ...a, status } : a))
+      prev.map((a) => (a.id === id ? { ...a, status, updatedAt: today } : a))
     );
   };
 

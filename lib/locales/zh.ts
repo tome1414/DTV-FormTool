@@ -86,6 +86,7 @@ const zh = {
     col_status: "状态",
     col_docs: "文件状态",
     col_date: "申请日期",
+    col_updated: "更新日期",
     no_results: "未找到符合条件的申请者",
     detail_title: "申请详情",
     status_change: "修改状态",

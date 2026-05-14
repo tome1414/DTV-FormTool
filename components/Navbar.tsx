@@ -6,7 +6,8 @@ import { useAuth } from "@/lib/auth";
 import { useI18n, Lang, LANG_LABELS, LANG_NAMES } from "@/lib/i18n";
 import { useState, useRef, useEffect } from "react";
 
-const LANG_ORDER: Lang[] = ["en", "ja", "zh", "ko", "hi", "ru"];
+const LANG_ORDER_ALL: Lang[] = ["en", "ja", "zh", "ko", "hi", "ru"];
+const LANG_ORDER_ADMIN: Lang[] = ["en", "ja"];
 
 export default function Navbar() {
   const pathname = usePathname();
@@ -15,6 +16,8 @@ export default function Navbar() {
   const { t, lang, setLang } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
+  const isAdminPage = pathname.startsWith("/admin");
+  const LANG_ORDER = isAdminPage ? LANG_ORDER_ADMIN : LANG_ORDER_ALL;
 
   useEffect(() => {
     const handleClick = (e: MouseEvent) => {

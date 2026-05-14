@@ -86,6 +86,7 @@ const ko = {
     col_status: "상태",
     col_docs: "서류 현황",
     col_date: "신청일",
+    col_updated: "업데이트일",
     no_results: "조건에 맞는 신청자가 없습니다",
     detail_title: "신청 상세",
     status_change: "상태 변경",

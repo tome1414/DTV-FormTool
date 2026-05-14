@@ -278,6 +278,9 @@ function AdminContent() {
                 <th className="text-left px-5 py-3 text-gray-500 font-medium">
                   {t("admin.col_date")}
                 </th>
+                <th className="text-left px-5 py-3 text-gray-500 font-medium">
+                  {t("admin.col_updated")}
+                </th>
               </tr>
             </thead>
             <tbody>
@@ -316,12 +319,13 @@ function AdminContent() {
                     </div>
                   </td>
                   <td className="px-5 py-3 text-gray-400">{a.submittedAt}</td>
+                  <td className="px-5 py-3 text-gray-400">{a.updatedAt}</td>
                 </tr>
               ))}
               {filtered.length === 0 && (
                 <tr>
                   <td
-                    colSpan={5}
+                    colSpan={6}
                     className="px-5 py-8 text-center text-gray-400"
                   >
                     {t("admin.no_results")}
