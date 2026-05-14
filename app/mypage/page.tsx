@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { Eye, RefreshCw, CheckCircle2, MinusCircle, Trash2 } from "lucide-react";
 import { useStore, ApplicationStatus, DocumentKey } from "@/lib/store";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -311,15 +312,11 @@ function MyPageContent() {
                 className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0"
               >
                 <div className="flex items-center gap-3">
-                  <span
-                    className={`w-6 h-6 rounded-full flex items-center justify-center text-xs font-bold flex-shrink-0 ${
-                      uploaded
-                        ? "bg-green-100 text-green-700"
-                        : "bg-gray-100 text-gray-400"
-                    }`}
-                  >
-                    {uploaded ? "✓" : "−"}
-                  </span>
+                  {uploaded ? (
+                    <CheckCircle2 size={18} className="text-green-500 flex-shrink-0" />
+                  ) : (
+                    <MinusCircle size={18} className="text-gray-300 flex-shrink-0" />
+                  )}
                   <span className="text-sm text-gray-700">{t(`docs.${key}`)}</span>
                   {required && (
                     <span className="text-xs bg-red-100 text-red-500 px-1.5 py-0.5 rounded flex-shrink-0">
@@ -327,26 +324,25 @@ function MyPageContent() {
                     </span>
                   )}
                 </div>
-                <div className="flex items-center gap-2 flex-shrink-0">
-                  <span
-                    className={`text-xs font-medium ${
-                      uploaded ? "text-green-600" : "text-gray-400"
-                    }`}
-                  >
-                    {uploaded ? t("mypage.uploaded") : t("mypage.not_submitted")}
-                  </span>
-                  {uploaded && (
+                <div className="flex items-center gap-1.5 flex-shrink-0">
+                  {uploaded ? (
                     <>
                       <button
                         onClick={() => setPreviewDoc(key)}
-                        className="text-xs border border-gray-300 text-gray-600 px-2 py-1 rounded hover:bg-gray-50 transition-colors"
+                        title={t("common.preview")}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
                       >
-                        {t("common.preview")}
+                        <Eye size={15} />
                       </button>
-                      <button className="text-xs border border-blue-300 text-blue-500 px-2 py-1 rounded hover:bg-blue-50 transition-colors">
-                        {t("common.replace")}
+                      <button
+                        title={t("common.replace")}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 text-blue-500 hover:bg-blue-50 transition-colors"
+                      >
+                        <RefreshCw size={14} />
                       </button>
                     </>
+                  ) : (
+                    <span className="text-xs text-gray-400">{t("mypage.not_submitted")}</span>
                   )}
                 </div>
               </div>

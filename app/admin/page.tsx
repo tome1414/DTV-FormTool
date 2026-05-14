@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { Eye, RefreshCw, Upload, Trash2, CheckCircle2 } from "lucide-react";
 import { useStore, Applicant, ApplicationStatus, DocumentKey } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
@@ -184,8 +185,8 @@ function DetailPanel({
 
                   {uploaded ? (
                     <div className="flex items-center gap-2 mt-1">
-                      <div className="flex items-center gap-2 flex-1 bg-gray-50 rounded px-2 py-1.5 min-w-0">
-                        <span className="text-red-400 text-sm flex-shrink-0">📄</span>
+                      <div className="flex items-center gap-2 flex-1 bg-gray-50 rounded-lg px-2.5 py-1.5 min-w-0 border border-gray-100">
+                        <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
                         <span className="text-xs text-gray-600 truncate">{uploaded.name}</span>
                         {uploaded.size > 0 && (
                           <span className="text-xs text-gray-400 flex-shrink-0">
@@ -195,20 +196,22 @@ function DetailPanel({
                       </div>
                       <button
                         onClick={() => fileRefs.current[key]?.click()}
-                        className="text-xs px-2 py-1.5 border border-blue-300 text-blue-600 rounded hover:bg-blue-50 transition-colors flex-shrink-0"
+                        title={t("admin.admin_replace_btn")}
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 text-blue-500 hover:bg-blue-50 transition-colors flex-shrink-0"
                       >
-                        {t("admin.admin_replace_btn")}
+                        <RefreshCw size={13} />
                       </button>
                       <button
                         onClick={() => handleAdminRemove(key)}
-                        className="text-xs px-2 py-1.5 border border-red-200 text-red-400 rounded hover:bg-red-50 transition-colors flex-shrink-0"
+                        title="削除"
+                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
                       >
-                        削除
+                        <Trash2 size={13} />
                       </button>
                     </div>
                   ) : (
                     <div
-                      className="border-2 border-dashed border-blue-200 rounded-lg p-3 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
+                      className="border-2 border-dashed border-blue-200 rounded-lg p-3 flex items-center justify-center gap-2 hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
                       onClick={() => fileRefs.current[key]?.click()}
                       onDragOver={(e) => e.preventDefault()}
                       onDrop={(e) => {
@@ -217,10 +220,8 @@ function DetailPanel({
                         if (file) handleAdminFile(key, file);
                       }}
                     >
-                      <p className="text-xs text-blue-500">
-                        クリックまたはドラッグ&ドロップ
-                      </p>
-                      <p className="text-xs text-gray-400 mt-0.5">PDF, PNG, JPG</p>
+                      <Upload size={14} className="text-blue-400" />
+                      <p className="text-xs text-blue-500">クリックまたはドロップ</p>
                     </div>
                   )}
 
@@ -401,14 +402,18 @@ function AdminContent() {
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex gap-1 flex-wrap">
-                      {DOC_DOTS.map((d) => (
+                      {DOC_DOTS.map((d, idx) => (
                         <span
                           key={d.key}
                           title={t(d.i18nKey)}
-                          className={`w-2.5 h-2.5 rounded-full ${
-                            a.documents[d.key] ? "bg-green-500" : "bg-gray-200"
+                          className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold select-none ${
+                            a.documents[d.key]
+                              ? "bg-green-500 text-white"
+                              : "bg-gray-100 text-gray-400"
                           }`}
-                        />
+                        >
+                          {idx + 1}
+                        </span>
                       ))}
                     </div>
                   </td>
