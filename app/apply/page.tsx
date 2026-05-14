@@ -21,7 +21,6 @@ const DOC_CONFIGS: DocConfig[] = [
   { key: "bankStatement", required: true, hasNote: true },
   { key: "photo", required: true, hasNote: true, showGuide: true },
   { key: "driverLicense", required: false, hasNote: true },
-  { key: "flightTicket", required: false, hasNote: false },
 ];
 
 function ApplyContent() {

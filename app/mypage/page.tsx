@@ -36,7 +36,6 @@ const DOC_KEYS: Array<{ key: DocumentKey; required: boolean }> = [
   { key: "bankStatement", required: true },
   { key: "photo", required: true },
   { key: "driverLicense", required: false },
-  { key: "flightTicket", required: false },
   { key: "pgaLicense", required: false },
   { key: "acceptanceLetter", required: false },
 ];

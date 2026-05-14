@@ -35,7 +35,6 @@ const DOC_DOTS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "bankStatement", i18nKey: "docs.bankStatement" },
   { key: "photo", i18nKey: "docs.photo" },
   { key: "driverLicense", i18nKey: "docs.driverLicense" },
-  { key: "flightTicket", i18nKey: "docs.flightTicket" },
   { key: "pgaLicense", i18nKey: "docs.pgaLicense" },
   { key: "acceptanceLetter", i18nKey: "docs.acceptanceLetter" },
   { key: "invoice", i18nKey: "docs.invoice" },
