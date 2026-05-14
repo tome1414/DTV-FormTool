@@ -48,7 +48,7 @@ const ko = {
   },
   apply: {
     title: "서류 업로드",
-    subtitle: "필수 서류 3종을 업로드해 주세요",
+    subtitle: "필수 서류 4종을 업로드해 주세요",
     progress_label: "필수 서류 진행 상황",
     progress_count: "{{uploaded}} / {{total}} 완료",
     drag_drop: "클릭하거나 드래그 앤 드롭",

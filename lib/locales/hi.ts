@@ -48,7 +48,7 @@ const hi = {
   },
   apply: {
     title: "दस्तावेज़ अपलोड",
-    subtitle: "कृपया 3 आवश्यक दस्तावेज़ अपलोड करें",
+    subtitle: "कृपया 4 आवश्यक दस्तावेज़ अपलोड करें",
     progress_label: "आवश्यक दस्तावेज़ प्रगति",
     progress_count: "{{uploaded}} / {{total}} पूर्ण",
     drag_drop: "क्लिक करें या ड्रैग और ड्रॉप करें",

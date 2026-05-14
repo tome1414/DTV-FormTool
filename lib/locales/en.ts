@@ -48,7 +48,7 @@ const en = {
   },
   apply: {
     title: "Document Upload",
-    subtitle: "Please upload all 3 required documents",
+    subtitle: "Please upload all 4 required documents",
     progress_label: "Required Documents Progress",
     progress_count: "{{uploaded}} / {{total}} completed",
     drag_drop: "Click or drag & drop",

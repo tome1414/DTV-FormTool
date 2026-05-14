@@ -48,7 +48,7 @@ const ja = {
   },
   apply: {
     title: "書類アップロード",
-    subtitle: "必須書類3種類をアップロードしてください",
+    subtitle: "必須書類4種類をアップロードしてください",
     progress_label: "必須書類の進捗",
     progress_count: "{{uploaded}} / {{total}} 完了",
     drag_drop: "クリックまたはドラッグ&ドロップ",

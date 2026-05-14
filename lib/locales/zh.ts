@@ -48,7 +48,7 @@ const zh = {
   },
   apply: {
     title: "上传文件",
-    subtitle: "请上传3种必填文件",
+    subtitle: "请上传4种必填文件",
     progress_label: "必填文件进度",
     progress_count: "{{uploaded}} / {{total}} 已完成",
     drag_drop: "点击或拖拽上传",
