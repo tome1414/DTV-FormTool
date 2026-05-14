@@ -1,7 +1,9 @@
 "use client";
 
 import { useState, useRef } from "react";
+import { AlertTriangle, Loader2 } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
+import { checkPassportMargin, checkPhotoBackground, type AnalysisWarning } from "@/lib/imageAnalysis";
 import AuthGuard from "@/components/AuthGuard";
 
 interface UploadedFile {
@@ -29,16 +31,28 @@ function ApplyContent() {
   const [uploads, setUploads] = useState<Record<string, UploadedFile | null>>({});
   const [activeTab, setActiveTab] = useState<Record<string, "upload" | "preview">>({});
   const [submitted, setSubmitted] = useState(false);
+  const [imageWarnings, setImageWarnings] = useState<Record<string, AnalysisWarning | null>>({});
+  const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({});
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const toggle = (key: string) =>
     setOpenKeys((prev) => ({ ...prev, [key]: !prev[key] }));
 
-  const handleFile = (key: string, file: File) => {
+  const handleFile = async (key: string, file: File) => {
     const isImage = file.type.startsWith("image/");
     const preview = isImage ? URL.createObjectURL(file) : null;
     setUploads((prev) => ({ ...prev, [key]: { file, preview } }));
     setActiveTab((prev) => ({ ...prev, [key]: "preview" }));
+    setImageWarnings((prev) => ({ ...prev, [key]: null }));
+
+    if (isImage && (key === "passport" || key === "photo")) {
+      setAnalyzing((prev) => ({ ...prev, [key]: true }));
+      const warning =
+        key === "passport" ? await checkPassportMargin(file)
+        : await checkPhotoBackground(file);
+      setImageWarnings((prev) => ({ ...prev, [key]: warning }));
+      setAnalyzing((prev) => ({ ...prev, [key]: false }));
+    }
   };
 
   const handleDrop = (key: string, e: React.DragEvent) => {
@@ -50,6 +64,7 @@ function ApplyContent() {
   const handleRemove = (key: string) => {
     setUploads((prev) => ({ ...prev, [key]: null }));
     setActiveTab((prev) => ({ ...prev, [key]: "upload" }));
+    setImageWarnings((prev) => ({ ...prev, [key]: null }));
     if (fileRefs.current[key]) fileRefs.current[key]!.value = "";
   };
 
@@ -235,6 +250,21 @@ function ApplyContent() {
                               {(uploaded.file.size / 1024).toFixed(1)} KB
                             </p>
                           </div>
+                        </div>
+                      )}
+                      {/* Canvas API analysis result */}
+                      {analyzing[doc.key] && (
+                        <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
+                          <Loader2 size={12} className="animate-spin" />
+                          <span>画像を解析中...</span>
+                        </div>
+                      )}
+                      {!analyzing[doc.key] && imageWarnings[doc.key] && (
+                        <div className="mt-2 flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
+                          <AlertTriangle size={14} className="text-orange-500 flex-shrink-0 mt-0.5" />
+                          <p className="text-xs text-orange-700 leading-relaxed">
+                            {imageWarnings[doc.key]!.message}
+                          </p>
                         </div>
                       )}
                       <div className="flex gap-2 mt-3">
