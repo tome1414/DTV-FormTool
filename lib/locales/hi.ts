@@ -96,6 +96,7 @@ const hi = {
     detail_title: "आवेदन विवरण",
     status_change: "स्थिति बदलें",
     notify: "दस्तावेज़ अपर्याप्त सूचना भेजें",
+    notify_sent: "ईमेल सफलतापूर्वक भेजा गया",
     download_pdf: "PDF डाउनलोड करें",
     admin_upload_title: "व्यवस्थापक दस्तावेज़ अपलोड",
     admin_upload_desc: "आवेदक की ओर से दस्तावेज़ अपलोड करें",

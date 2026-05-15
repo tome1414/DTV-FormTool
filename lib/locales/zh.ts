@@ -96,6 +96,7 @@ const zh = {
     detail_title: "申请详情",
     status_change: "修改状态",
     notify: "发送文件不足通知",
+    notify_sent: "邮件发送成功",
     download_pdf: "下载PDF",
     admin_upload_title: "管理员文件上传",
     admin_upload_desc: "代表申请者上传文件",

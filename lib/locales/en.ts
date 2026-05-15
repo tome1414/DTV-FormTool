@@ -97,6 +97,7 @@ const en = {
     detail_title: "Application Detail",
     status_change: "Change Status",
     notify: "Send Missing Docs Notice",
+    notify_sent: "Email sent successfully",
     download_pdf: "Download PDF",
     admin_upload_title: "Admin Document Upload",
     admin_upload_desc: "Upload documents on behalf of the applicant",

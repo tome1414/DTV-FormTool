@@ -97,6 +97,7 @@ const ru = {
     detail_title: "Детали заявки",
     status_change: "Изменить статус",
     notify: "Отправить уведомление о неполных документах",
+    notify_sent: "Письмо отправлено",
     download_pdf: "Скачать PDF",
     admin_upload_title: "Загрузка документов администратором",
     admin_upload_desc: "Загрузите документы от имени заявителя",

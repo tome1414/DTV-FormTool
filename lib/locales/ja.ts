@@ -97,6 +97,7 @@ const ja = {
     detail_title: "申請詳細",
     status_change: "ステータス変更",
     notify: "不備通知を送る",
+    notify_sent: "メールを送信しました",
     download_pdf: "PDFをダウンロード",
     admin_upload_title: "管理者書類アップロード",
     admin_upload_desc: "申請者に代わって書類をアップロードします",

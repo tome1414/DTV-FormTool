@@ -571,6 +571,34 @@ function DetailPanel({
   const [editingWarning, setEditingWarning] = useState<DocumentKey | null>(null);
   const [warningDraft, setWarningDraft] = useState("");
   const [previewDoc, setPreviewDoc] = useState<{ key: DocumentKey; label: string } | null>(null);
+  const [notifying, setNotifying] = useState(false);
+
+  const handleNotify = async () => {
+    setNotifying(true);
+    try {
+      const res = await fetch("/api/notify", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          to: applicant.email,
+          applicantName: applicant.name,
+          applicationNumber: applicant.applicationNumber,
+          notes: applicant.notes,
+        }),
+      });
+      const json = await res.json();
+      if (res.ok) {
+        setToast(t("admin.notify_sent"));
+      } else {
+        setToast(`送信エラー: ${json.error ?? res.status}`);
+      }
+    } catch {
+      setToast("送信エラー: ネットワーク障害");
+    } finally {
+      setNotifying(false);
+      setTimeout(() => setToast(null), 4000);
+    }
+  };
 
   const handleSave = () => {
     updateStatus(applicant.id, selectedStatus);
@@ -914,7 +942,14 @@ function DetailPanel({
 
         {/* Actions */}
         <div className="space-y-2">
-          <button className="w-full border border-orange-300 text-orange-600 text-sm py-2 rounded-lg hover:bg-orange-50 transition-colors">
+          <button
+            onClick={handleNotify}
+            disabled={notifying}
+            className="w-full border border-orange-300 text-orange-600 text-sm py-2 rounded-lg hover:bg-orange-50 disabled:opacity-50 disabled:cursor-not-allowed transition-colors flex items-center justify-center gap-2"
+          >
+            {notifying && (
+              <span className="w-3.5 h-3.5 rounded-full border-2 border-orange-400 border-t-transparent animate-spin" />
+            )}
             {t("admin.notify")}
           </button>
           <DownloadSection applicant={applicant} t={t} />

@@ -96,6 +96,7 @@ const ko = {
     detail_title: "신청 상세",
     status_change: "상태 변경",
     notify: "서류 부족 알림 보내기",
+    notify_sent: "이메일을 발송했습니다",
     download_pdf: "PDF 다운로드",
     admin_upload_title: "관리자 서류 업로드",
     admin_upload_desc: "신청자를 대신하여 서류를 업로드합니다",
