@@ -107,22 +107,12 @@ function DocPreviewModal({
               className="w-full max-h-96 object-contain rounded-xl border border-gray-200"
             />
           ) : signedUrl ? (
-            <div className="bg-gray-50 rounded-xl border border-gray-200 p-6 flex items-center gap-4">
-              <div className="w-12 h-14 bg-red-50 border border-red-200 rounded flex items-center justify-center flex-shrink-0">
-                <span className="text-xs font-bold text-red-500">PDF</span>
-              </div>
-              <div>
-                <p className="font-medium text-gray-800 text-sm">{label}</p>
-                <a
-                  href={signedUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-500 hover:underline mt-1 inline-block"
-                >
-                  PDFを開く →
-                </a>
-              </div>
-            </div>
+            <iframe
+              src={signedUrl}
+              className="w-full rounded-xl border border-gray-200"
+              style={{ height: "480px" }}
+              title={label}
+            />
           ) : (
             <div className="flex items-center justify-center min-h-48 text-gray-400 text-sm">
               プレビューを読み込めませんでした

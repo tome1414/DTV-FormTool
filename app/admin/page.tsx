@@ -558,25 +558,12 @@ function PreviewModal({
               className="w-full max-h-96 object-contain rounded-lg border border-gray-200"
             />
           ) : displayUrl ? (
-            <div className="bg-gray-50 rounded-xl border border-gray-200 p-6 flex items-center gap-4">
-              <span className="text-5xl">📄</span>
-              <div>
-                <p className="font-medium text-gray-800 text-sm">{adminFile?.name ?? label}</p>
-                {adminFile && (
-                  <p className="text-gray-400 text-xs mt-1">
-                    {(adminFile.size / 1024).toFixed(1)} KB
-                  </p>
-                )}
-                <a
-                  href={displayUrl}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                  className="text-xs text-blue-500 hover:underline mt-1 inline-block"
-                >
-                  PDFを開く
-                </a>
-              </div>
-            </div>
+            <iframe
+              src={displayUrl}
+              className="w-full rounded-lg border border-gray-200"
+              style={{ height: "480px" }}
+              title={label}
+            />
           ) : (
             <div className="bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 h-52 flex flex-col items-center justify-center gap-3 text-center px-6">
               <span className="text-5xl">📄</span>
