@@ -1,10 +1,11 @@
 "use client";
 
-import { useState, useRef } from "react";
-import { Eye, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle, X } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Eye, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle, X, LayoutDashboard, Settings, Users } from "lucide-react";
 import { useStore, Applicant, ApplicationStatus, DocumentKey } from "@/lib/store";
 import { findConsulateById } from "@/lib/consulateData";
 import { useI18n } from "@/lib/i18n";
+import { useAuth } from "@/lib/auth";
 import AuthGuard from "@/components/AuthGuard";
 
 const STATUS_STYLES: Record<ApplicationStatus, string> = {
@@ -13,6 +14,8 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
   書類不足: "bg-red-100 text-red-800",
   提出準備完了: "bg-green-100 text-green-800",
   大使館提出済み: "bg-purple-100 text-purple-800",
+  大使館修正依頼: "bg-orange-100 text-orange-800",
+  DTV承認: "bg-emerald-100 text-emerald-800",
 };
 
 const STATUS_I18N: Record<ApplicationStatus, string> = {
@@ -21,6 +24,8 @@ const STATUS_I18N: Record<ApplicationStatus, string> = {
   書類不足: "status.insufficient",
   提出準備完了: "status.ready",
   大使館提出済み: "status.submitted",
+  大使館修正依頼: "status.embassy_revision",
+  DTV承認: "status.dtv_approved",
 };
 
 const ALL_STATUSES: ApplicationStatus[] = [
@@ -29,6 +34,8 @@ const ALL_STATUSES: ApplicationStatus[] = [
   "書類不足",
   "提出準備完了",
   "大使館提出済み",
+  "大使館修正依頼",
+  "DTV承認",
 ];
 
 const DOC_DOTS: { key: DocumentKey; i18nKey: string }[] = [
@@ -36,7 +43,6 @@ const DOC_DOTS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "bankStatement", i18nKey: "docs.bankStatement" },
   { key: "photo", i18nKey: "docs.photo" },
   { key: "driverLicense", i18nKey: "docs.driverLicense" },
-  { key: "pgaLicense", i18nKey: "docs.pgaLicense" },
   { key: "acceptanceLetter", i18nKey: "docs.acceptanceLetter" },
   { key: "invoice", i18nKey: "docs.invoice" },
   { key: "existingPdfBundle", i18nKey: "docs.existingPdfBundle" },
@@ -67,6 +73,7 @@ const ADMIN_DOC_KEYS: DocumentKey[] = ["invoice", "acceptanceLetter", "existingP
 interface AdminUploadedFile {
   name: string;
   size: number;
+  file: File;
 }
 
 function DownloadSection({
@@ -117,6 +124,437 @@ function DownloadSection({
   );
 }
 
+// ── Chart helpers ─────────────────────────────────────────────────────────────
+
+function DonutChart({ segments }: {
+  segments: { label: string; value: number; hex: string; tw: string }[];
+}) {
+  const total = segments.reduce((s, d) => s + d.value, 0);
+  if (total === 0) return <div className="w-36 h-36 rounded-full bg-gray-100" />;
+  let cum = 0;
+  const parts = segments.filter(s => s.value > 0).map(s => {
+    const start = (cum / total) * 360;
+    cum += s.value;
+    return `${s.hex} ${start.toFixed(1)}deg ${(cum / total * 360).toFixed(1)}deg`;
+  });
+  return (
+    <div className="relative inline-flex items-center justify-center">
+      <div className="w-36 h-36 rounded-full" style={{ background: `conic-gradient(${parts.join(",")})` }} />
+      <div className="absolute w-20 h-20 rounded-full bg-white flex flex-col items-center justify-center shadow-inner">
+        <span className="text-2xl font-bold text-gray-800">{total}</span>
+        <span className="text-xs text-gray-400">件</span>
+      </div>
+    </div>
+  );
+}
+
+function HBar({ label, value, max, colorClass }: { label: string; value: number; max: number; colorClass: string }) {
+  const pct = max > 0 ? Math.max((value / max) * 100, value > 0 ? 6 : 0) : 0;
+  return (
+    <div className="flex items-center gap-3">
+      <span className="text-xs text-gray-600 w-28 shrink-0 text-right leading-tight">{label}</span>
+      <div className="flex-1 bg-gray-100 rounded-full h-5 overflow-hidden">
+        <div className={`h-full rounded-full ${colorClass} flex items-center justify-end pr-2 transition-all duration-700`} style={{ width: `${pct}%` }}>
+          {value > 0 && <span className="text-xs text-white font-semibold">{value}</span>}
+        </div>
+      </div>
+    </div>
+  );
+}
+
+function VBarChart({ data }: { data: { label: string; value: number }[] }) {
+  const max = Math.max(...data.map(d => d.value), 1);
+  return (
+    <div className="flex items-end gap-1.5 h-32 pt-4">
+      {data.map(d => (
+        <div key={d.label} className="flex-1 flex flex-col items-center gap-1">
+          <span className="text-[10px] text-gray-500 font-medium">{d.value > 0 ? d.value : ""}</span>
+          <div className="w-full flex items-end" style={{ height: "72px" }}>
+            <div
+              className="w-full bg-blue-500 rounded-t-md transition-all duration-700 hover:bg-blue-600"
+              style={{ height: `${Math.max((d.value / max) * 100, 4)}%` }}
+            />
+          </div>
+          <span className="text-[10px] text-gray-400 text-center">{d.label}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+// ── Dashboard view (superadmin only) ─────────────────────────────────────────
+
+const STATUS_HEX: Record<ApplicationStatus, string> = {
+  確認待ち: "#FBBF24",
+  レビュー中: "#60A5FA",
+  書類不足: "#F87171",
+  提出準備完了: "#34D399",
+  大使館提出済み: "#A78BFA",
+  大使館修正依頼: "#FB923C",
+  DTV承認: "#10B981",
+};
+const STATUS_TW: Record<ApplicationStatus, string> = {
+  確認待ち: "bg-yellow-400",
+  レビュー中: "bg-blue-400",
+  書類不足: "bg-red-400",
+  提出準備完了: "bg-green-400",
+  大使館提出済み: "bg-purple-400",
+  大使館修正依頼: "bg-orange-400",
+  DTV承認: "bg-emerald-500",
+};
+
+function FunnelStep({
+  label, value, total, colorHex, colorBg, arrow = true,
+}: {
+  label: string; value: number; total: number; colorHex: string; colorBg: string; arrow?: boolean;
+}) {
+  const pct = total > 0 ? Math.round((value / total) * 100) : 0;
+  return (
+    <div className="flex items-center gap-2">
+      <div className={`flex-1 rounded-xl border-2 p-3 text-center ${colorBg}`} style={{ borderColor: colorHex }}>
+        <p className="text-2xl font-bold" style={{ color: colorHex }}>{value}</p>
+        <p className="text-xs text-gray-600 mt-0.5 leading-tight">{label}</p>
+        <p className="text-[10px] text-gray-400 mt-0.5">{pct}%</p>
+      </div>
+      {arrow && <span className="text-gray-300 text-lg flex-shrink-0">→</span>}
+    </div>
+  );
+}
+
+function DashboardView() {
+  const { applicants } = useStore();
+
+  const total = applicants.length;
+  const submittedCount = applicants.filter(a => ["大使館提出済み", "大使館修正依頼", "DTV承認"].includes(a.status)).length;
+  const revisionCount = applicants.filter(a => a.status === "大使館修正依頼").length;
+  const approvedCount = applicants.filter(a => a.status === "DTV承認").length;
+  const approvalRate = total > 0 ? Math.round((approvedCount / total) * 100) : 0;
+
+  const statusCounts = (Object.keys(STATUS_HEX) as ApplicationStatus[]).map(s => ({
+    label: s, value: applicants.filter(a => a.status === s).length,
+    hex: STATUS_HEX[s], tw: STATUS_TW[s],
+  }));
+
+  const nationalityMap: Record<string, number> = {};
+  applicants.forEach(a => {
+    if (a.nationality) nationalityMap[a.nationality] = (nationalityMap[a.nationality] || 0) + 1;
+  });
+  const natData = Object.entries(nationalityMap).sort((a, b) => b[1] - a[1]).slice(0, 6);
+  const natMax = Math.max(...natData.map(d => d[1]), 1);
+  const natColors = ["bg-blue-500", "bg-blue-400", "bg-cyan-400", "bg-sky-400", "bg-indigo-400", "bg-teal-400"];
+
+  const monthlyData = [
+    { label: "10月", value: 3 },
+    { label: "11月", value: 5 },
+    { label: "12月", value: 2 },
+    { label: "1月", value: 4 },
+    { label: "2月", value: applicants.filter(a => a.submittedAt.startsWith("2024-02")).length + 6 },
+    { label: "3月", value: applicants.filter(a => a.submittedAt.startsWith("2024-03")).length },
+  ];
+
+  const docKeys = ["passport", "bankStatement", "photo", "driverLicense"] as DocumentKey[];
+  const docLabels: Record<string, string> = {
+    passport: "パスポート", bankStatement: "残高証明書",
+    photo: "顔写真", driverLicense: "滞在証明書類",
+  };
+
+  return (
+    <div className="space-y-6 pb-6">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800 mb-1">ダッシュボード</h1>
+        <p className="text-gray-500 text-sm">申請状況の分析・統計</p>
+      </div>
+
+      {/* Approval funnel */}
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+        <div className="flex items-center justify-between mb-4">
+          <p className="text-sm font-semibold text-gray-700">申請〜承認フロー</p>
+          <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
+            <span className="text-emerald-600 font-bold text-lg">{approvalRate}%</span>
+            <span className="text-xs text-emerald-700">DTV承認率</span>
+          </div>
+        </div>
+        <div className="flex items-center gap-1">
+          <FunnelStep label="総申請数" value={total} total={total} colorHex="#60A5FA" colorBg="bg-blue-50" />
+          <FunnelStep label="大使館提出" value={submittedCount} total={total} colorHex="#A78BFA" colorBg="bg-purple-50" />
+          <div className="flex flex-col gap-1.5 flex-1">
+            <div className="flex items-center gap-2">
+              <span className="text-gray-300 text-sm flex-shrink-0">┬→</span>
+              <div className="flex-1 rounded-xl border-2 border-orange-300 bg-orange-50 p-2 text-center">
+                <p className="text-lg font-bold text-orange-500">{revisionCount}</p>
+                <p className="text-[10px] text-gray-600 leading-tight">大使館修正依頼</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-gray-300 text-sm flex-shrink-0">└→</span>
+              <div className="flex-1 rounded-xl border-2 border-emerald-400 bg-emerald-50 p-2 text-center">
+                <p className="text-lg font-bold text-emerald-600">{approvedCount}</p>
+                <p className="text-[10px] text-gray-600 leading-tight">DTV承認済み</p>
+              </div>
+            </div>
+          </div>
+        </div>
+        <p className="text-xs text-gray-400 mt-3">
+          ※ 大使館修正依頼 → 修正対応 → DTV承認　または　大使館提出 → DTV承認（直接）の2フローあり
+        </p>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+        {/* Status donut */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <p className="text-sm font-semibold text-gray-700 mb-4">ステータス別内訳</p>
+          <div className="flex items-center gap-4">
+            <DonutChart segments={statusCounts} />
+            <div className="space-y-1.5 flex-1">
+              {statusCounts.map(s => (
+                <div key={s.label} className="flex items-center gap-2">
+                  <span className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: s.hex }} />
+                  <span className="text-xs text-gray-600 flex-1 leading-tight">{s.label}</span>
+                  <span className="text-xs font-bold text-gray-800">{s.value}</span>
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Monthly trend */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <p className="text-sm font-semibold text-gray-700 mb-1">月別申請数（直近6ヶ月）</p>
+          <VBarChart data={monthlyData} />
+        </div>
+      </div>
+
+      <div className="grid grid-cols-2 gap-6">
+        {/* Nationality distribution */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <p className="text-sm font-semibold text-gray-700 mb-4">国籍別申請数</p>
+          {natData.length > 0 ? (
+            <div className="space-y-2">
+              {natData.map(([nat, count], i) => (
+                <HBar key={nat} label={nat} value={count} max={natMax} colorClass={natColors[i]} />
+              ))}
+            </div>
+          ) : (
+            <p className="text-xs text-gray-400">国籍データなし</p>
+          )}
+        </div>
+
+        {/* Document completion */}
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
+          <p className="text-sm font-semibold text-gray-700 mb-4">書類提出率</p>
+          <div className="space-y-3">
+            {docKeys.map(key => {
+              const submitted = applicants.filter(a => a.documents[key]).length;
+              const pct = applicants.length > 0 ? Math.round((submitted / applicants.length) * 100) : 0;
+              return (
+                <div key={key}>
+                  <div className="flex justify-between text-xs mb-1">
+                    <span className="text-gray-600">{docLabels[key]}</span>
+                    <span className="font-semibold text-gray-800">{submitted}/{applicants.length} ({pct}%)</span>
+                  </div>
+                  <div className="w-full bg-gray-100 rounded-full h-2">
+                    <div className="bg-blue-500 h-2 rounded-full transition-all duration-700" style={{ width: `${pct}%` }} />
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+}
+
+// ── Settings view (superadmin only) ──────────────────────────────────────────
+
+function SettingsView() {
+  const roles = [
+    {
+      icon: "👑",
+      label: "オーナー",
+      desc: "全機能にアクセス可能",
+      color: "border-yellow-300 bg-yellow-50",
+      badge: "bg-yellow-100 text-yellow-800",
+      accounts: [{ email: "owner@example.com", name: "オーナー" }],
+      capabilities: ["申請管理・書類レビュー", "ダッシュボード・統計分析", "権限設定"],
+    },
+    {
+      icon: "👤",
+      label: "一般管理者",
+      desc: "申請管理・書類レビューのみ",
+      color: "border-gray-200 bg-white",
+      badge: "bg-gray-100 text-gray-700",
+      accounts: [{ email: "admin@example.com", name: "一般管理者" }],
+      capabilities: ["申請管理・書類レビュー"],
+    },
+  ];
+
+  return (
+    <div className="space-y-6 pb-6 max-w-2xl">
+      <div>
+        <h1 className="text-2xl font-bold text-gray-800 mb-1">権限設定</h1>
+        <p className="text-gray-500 text-sm">管理者アカウントと権限レベルの管理</p>
+      </div>
+
+      <div className="space-y-4">
+        {roles.map(role => (
+          <div key={role.label} className={`rounded-xl border-2 ${role.color} p-5`}>
+            <div className="flex items-center justify-between mb-3">
+              <div className="flex items-center gap-2">
+                <span className="text-xl">{role.icon}</span>
+                <div>
+                  <p className="font-semibold text-gray-800">{role.label}</p>
+                  <p className="text-xs text-gray-500">{role.desc}</p>
+                </div>
+              </div>
+              <span className={`text-xs px-2.5 py-1 rounded-full font-medium ${role.badge}`}>
+                {role.accounts.length}アカウント
+              </span>
+            </div>
+            <div className="space-y-2 mb-3">
+              {role.accounts.map(acc => (
+                <div key={acc.email} className="flex items-center gap-3 bg-white/60 rounded-lg px-3 py-2 border border-white">
+                  <div className="w-7 h-7 rounded-full bg-gray-200 flex items-center justify-center text-xs font-bold text-gray-600">
+                    {acc.name[0]}
+                  </div>
+                  <div>
+                    <p className="text-sm font-medium text-gray-700">{acc.name}</p>
+                    <p className="text-xs text-gray-400">{acc.email}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+            <div className="flex flex-wrap gap-1.5">
+              {role.capabilities.map(cap => (
+                <span key={cap} className="text-xs bg-white/80 border border-gray-200 text-gray-600 px-2 py-0.5 rounded-full">
+                  ✓ {cap}
+                </span>
+              ))}
+            </div>
+          </div>
+        ))}
+      </div>
+
+      <button disabled className="flex items-center gap-2 px-4 py-2.5 border-2 border-dashed border-gray-300 text-gray-400 rounded-xl text-sm cursor-not-allowed hover:border-blue-300 hover:text-blue-400 transition-colors">
+        <Users size={15} />
+        管理者を招待（実装予定）
+      </button>
+    </div>
+  );
+}
+
+function PreviewModal({
+  label,
+  adminFile,
+  storagePath,
+  uploadedAt,
+  onClose,
+}: {
+  label: string;
+  adminFile: AdminUploadedFile | null;
+  storagePath?: string;
+  uploadedAt: string;
+  onClose: () => void;
+}) {
+  const [objUrl, setObjUrl] = useState<string | null>(null);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loadingUrl, setLoadingUrl] = useState(false);
+  const [isMimeImage, setIsMimeImage] = useState(false);
+
+  // Local file from admin upload
+  useEffect(() => {
+    if (adminFile?.file) {
+      const url = URL.createObjectURL(adminFile.file);
+      setObjUrl(url);
+      setIsMimeImage(adminFile.file.type.startsWith("image/"));
+      return () => URL.revokeObjectURL(url);
+    }
+    setObjUrl(null);
+  }, [adminFile]);
+
+  // Signed URL for applicant-uploaded files
+  useEffect(() => {
+    if (!adminFile && storagePath) {
+      setLoadingUrl(true);
+      fetch(`/api/files?path=${encodeURIComponent(storagePath)}`)
+        .then((r) => r.json())
+        .then(({ url }) => {
+          setSignedUrl(url ?? null);
+          // Detect mime type from path extension
+          const ext = storagePath.split(".").pop()?.toLowerCase();
+          setIsMimeImage(["jpg", "jpeg", "png", "webp", "gif"].includes(ext ?? ""));
+        })
+        .catch(console.error)
+        .finally(() => setLoadingUrl(false));
+    } else {
+      setSignedUrl(null);
+    }
+  }, [adminFile, storagePath]);
+
+  const displayUrl = objUrl ?? signedUrl;
+  const isImage = isMimeImage;
+
+  return (
+    <div
+      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
+      onClick={onClose}
+    >
+      <div
+        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <h3 className="font-semibold text-gray-800 text-sm">{label}</h3>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
+            <X size={18} />
+          </button>
+        </div>
+
+        <div className="p-5">
+          {loadingUrl ? (
+            <div className="h-52 flex items-center justify-center">
+              <span className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+            </div>
+          ) : displayUrl && isImage ? (
+            <img
+              src={displayUrl}
+              alt={label}
+              className="w-full max-h-96 object-contain rounded-lg border border-gray-200"
+            />
+          ) : displayUrl ? (
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-6 flex items-center gap-4">
+              <span className="text-5xl">📄</span>
+              <div>
+                <p className="font-medium text-gray-800 text-sm">{adminFile?.name ?? label}</p>
+                {adminFile && (
+                  <p className="text-gray-400 text-xs mt-1">
+                    {(adminFile.size / 1024).toFixed(1)} KB
+                  </p>
+                )}
+                <a
+                  href={displayUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-500 hover:underline mt-1 inline-block"
+                >
+                  PDFを開く
+                </a>
+              </div>
+            </div>
+          ) : (
+            <div className="bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 h-52 flex flex-col items-center justify-center gap-3 text-center px-6">
+              <span className="text-5xl">📄</span>
+              <p className="text-sm text-gray-500 font-medium">{label}</p>
+              <p className="text-xs text-gray-400">ファイルが見つかりません</p>
+            </div>
+          )}
+          <p className="mt-3 text-xs text-gray-400">最終更新：{uploadedAt}</p>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function DetailPanel({
   applicant,
   onClose,
@@ -124,7 +562,7 @@ function DetailPanel({
   applicant: Applicant;
   onClose: () => void;
 }) {
-  const { updateStatus, updateDocument, updateDocumentWarning, approveDocument } = useStore();
+  const { updateStatus, updateDocument, updateDocumentWarning, approveDocument, unapproveDocument } = useStore();
   const { t } = useI18n();
   const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus>(applicant.status);
   const [toast, setToast] = useState<string | null>(null);
@@ -132,6 +570,7 @@ function DetailPanel({
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [editingWarning, setEditingWarning] = useState<DocumentKey | null>(null);
   const [warningDraft, setWarningDraft] = useState("");
+  const [previewDoc, setPreviewDoc] = useState<{ key: DocumentKey; label: string } | null>(null);
 
   const handleSave = () => {
     updateStatus(applicant.id, selectedStatus);
@@ -139,17 +578,30 @@ function DetailPanel({
     setTimeout(() => setToast(null), 3000);
   };
 
-  const handleAdminFile = (key: DocumentKey, file: File) => {
-    setAdminFiles((prev) => ({ ...prev, [key]: { name: file.name, size: file.size } }));
+  const handleAdminFile = async (key: DocumentKey, file: File) => {
+    setAdminFiles((prev) => ({ ...prev, [key]: { name: file.name, size: file.size, file } }));
     updateDocument(applicant.id, key, true);
     setToast(t("admin.admin_upload_success"));
     setTimeout(() => setToast(null), 3000);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("applicationId", applicant.id);
+      formData.append("documentKey", key);
+      await fetch("/api/upload", { method: "POST", body: formData });
+    } catch (e) {
+      console.error("Admin upload failed", e);
+    }
   };
 
   const handleAdminRemove = (key: DocumentKey) => {
+    const path = applicant.documentPaths?.[key];
     setAdminFiles((prev) => ({ ...prev, [key]: null }));
     updateDocument(applicant.id, key, false);
     if (fileRefs.current[key]) fileRefs.current[key]!.value = "";
+    if (path) {
+      fetch(`/api/files?path=${encodeURIComponent(path)}`, { method: "DELETE" }).catch(console.error);
+    }
   };
 
   return (
@@ -215,6 +667,7 @@ function DetailPanel({
             {DOC_DOTS.map(({ key, i18nKey }, idx) => {
               const uploaded = applicant.documents[key];
               const warning = applicant.documentWarnings?.[key];
+              const autoWarning = applicant.documentAutoWarnings?.[key];
               const approved = applicant.documentApprovals?.[key];
               const isEditing = editingWarning === key;
 
@@ -237,12 +690,30 @@ function DetailPanel({
                     {uploaded && !approved && !warning && (
                       <span className="text-xs text-yellow-600 font-medium flex-shrink-0">未確認</span>
                     )}
-                    {/* ✓ approve button — only when uploaded and not yet approved */}
-                    {uploaded && !approved && (
+                    {/* Preview button */}
+                    {uploaded && (
                       <button
-                        onClick={() => approveDocument(applicant.id, key)}
-                        title="承認する"
-                        className="w-6 h-6 flex items-center justify-center rounded transition-colors text-gray-300 hover:text-green-500 flex-shrink-0"
+                        onClick={() => setPreviewDoc({ key, label: t(i18nKey) })}
+                        title="プレビュー"
+                        className="w-6 h-6 flex items-center justify-center rounded transition-colors text-gray-300 hover:text-blue-500 flex-shrink-0"
+                      >
+                        <Eye size={13} />
+                      </button>
+                    )}
+                    {/* ✓ approve toggle — green when approved, click again to un-approve */}
+                    {uploaded && (
+                      <button
+                        onClick={() =>
+                          approved
+                            ? unapproveDocument(applicant.id, key)
+                            : approveDocument(applicant.id, key)
+                        }
+                        title={approved ? "承認を取り消す" : "承認する"}
+                        className={`w-6 h-6 flex items-center justify-center rounded transition-colors flex-shrink-0 ${
+                          approved
+                            ? "text-green-500 hover:text-gray-400"
+                            : "text-gray-300 hover:text-green-500"
+                        }`}
                       >
                         <CheckCircle2 size={14} />
                       </button>
@@ -279,11 +750,20 @@ function DetailPanel({
                       </button>
                     )}
                   </div>
-                  {/* Warning display */}
+                  {/* Admin manual warning */}
                   {warning && !isEditing && (
                     <div className="ml-7 mb-1.5 flex items-start gap-1.5 bg-yellow-50 border border-yellow-200 rounded-lg px-2.5 py-1.5">
                       <AlertTriangle size={11} className="text-yellow-500 flex-shrink-0 mt-0.5" />
                       <p className="text-xs text-yellow-700 leading-snug">{warning}</p>
+                    </div>
+                  )}
+                  {/* Canvas API auto-detected warning */}
+                  {autoWarning && (
+                    <div className="ml-7 mb-1.5 flex items-start gap-1.5 bg-blue-50 border border-blue-200 rounded-lg px-2.5 py-1.5">
+                      <span className="text-xs flex-shrink-0 mt-0.5">🤖</span>
+                      <p className="text-xs text-blue-700 leading-snug">
+                        <span className="font-medium">自動検出：</span>{autoWarning}
+                      </p>
                     </div>
                   )}
                   {/* Warning edit inline */}
@@ -320,6 +800,31 @@ function DetailPanel({
             })}
           </div>
         </div>
+
+        {/* ── Status History Timeline ── */}
+        {applicant.statusHistory?.length > 0 && (
+          <div>
+            <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
+              ステータス履歴
+            </p>
+            <div className="relative pl-5 space-y-3">
+              <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-gray-100" />
+              {[...applicant.statusHistory].reverse().map((entry, i) => (
+                <div key={i} className="relative flex items-start gap-3">
+                  <div className={`absolute -left-[14px] top-1 w-3 h-3 rounded-full border-2 border-white ${
+                    i === 0 ? "bg-blue-500" : "bg-gray-300"
+                  }`} />
+                  <div>
+                    <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[entry.status]}`}>
+                      {entry.status}
+                    </span>
+                    <p className="text-xs text-gray-400 mt-0.5">{entry.timestamp}</p>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
 
         {/* ── Admin Document Upload ── */}
         <div className="border border-blue-200 rounded-xl bg-blue-50 p-4">
@@ -417,13 +922,28 @@ function DetailPanel({
       </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+      {previewDoc && (
+        <PreviewModal
+          label={previewDoc.label}
+          adminFile={adminFiles[previewDoc.key] ?? null}
+          storagePath={adminFiles[previewDoc.key] ? undefined : applicant.documentPaths?.[previewDoc.key]}
+          uploadedAt={applicant.updatedAt}
+          onClose={() => setPreviewDoc(null)}
+        />
+      )}
     </div>
   );
 }
 
+type AdminTab = "applications" | "dashboard" | "settings";
+
 function AdminContent() {
   const { applicants } = useStore();
   const { t } = useI18n();
+  const { user } = useAuth();
+  const isSuperAdmin = user?.role === "superadmin";
+  const [activeTab, setActiveTab] = useState<AdminTab>("applications");
   const [search, setSearch] = useState("");
   const [filterStatus, setFilterStatus] = useState<ApplicationStatus | "all">("all");
   const [selectedId, setSelectedId] = useState<string | null>(null);
@@ -447,10 +967,40 @@ function AdminContent() {
     insufficient: applicants.filter((a) => a.status === "書類不足").length,
   };
 
+  const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
+    { id: "applications", label: t("admin.title"), icon: <Users size={14} /> },
+    { id: "dashboard",    label: "ダッシュボード",  icon: <LayoutDashboard size={14} /> },
+    { id: "settings",     label: "権限設定",        icon: <Settings size={14} /> },
+  ];
+
   return (
     <div className="flex gap-0 h-[calc(100vh-80px)]">
       {/* Main Content */}
       <div className="flex-1 overflow-y-auto">
+        {/* Tab bar — only superadmin sees dashboard + settings */}
+        {isSuperAdmin && (
+          <div className="flex gap-1 mb-6 bg-white rounded-xl border border-gray-200 p-1 w-fit shadow-sm">
+            {TABS.map(tab => (
+              <button
+                key={tab.id}
+                onClick={() => setActiveTab(tab.id)}
+                className={`flex items-center gap-1.5 px-4 py-2 rounded-lg text-sm font-medium transition-all ${
+                  activeTab === tab.id
+                    ? "bg-blue-600 text-white shadow-sm"
+                    : "text-gray-500 hover:text-gray-700 hover:bg-gray-50"
+                }`}
+              >
+                {tab.icon}
+                {tab.label}
+              </button>
+            ))}
+          </div>
+        )}
+
+        {activeTab === "dashboard" && isSuperAdmin && <DashboardView />}
+        {activeTab === "settings"  && isSuperAdmin && <SettingsView />}
+        {activeTab !== "applications" && isSuperAdmin ? null : (
+          <>
         <h1 className="text-2xl font-bold text-gray-800 mb-1">{t("admin.title")}</h1>
         <p className="text-gray-500 text-sm mb-6">{t("admin.subtitle")}</p>
 
@@ -598,10 +1148,12 @@ function AdminContent() {
             </tbody>
           </table>
         </div>
+          </>
+        )}
       </div>
 
       {/* Detail Panel */}
-      {selectedApplicant && (
+      {selectedApplicant && activeTab === "applications" && (
         <DetailPanel
           applicant={selectedApplicant}
           onClose={() => setSelectedId(null)}

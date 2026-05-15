@@ -1,9 +1,8 @@
 "use client";
 
-import { useState } from "react";
-import { Eye, RefreshCw, CheckCircle2, MinusCircle, Trash2 } from "lucide-react";
+import { useState, useRef, useEffect } from "react";
+import { Eye, RefreshCw, CheckCircle2, MinusCircle, Upload } from "lucide-react";
 import { useStore, ApplicationStatus, DocumentKey } from "@/lib/store";
-import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
 
@@ -13,6 +12,8 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
   書類不足: "bg-red-100 text-red-800 border-red-300",
   提出準備完了: "bg-green-100 text-green-800 border-green-300",
   大使館提出済み: "bg-purple-100 text-purple-800 border-purple-300",
+  大使館修正依頼: "bg-orange-100 text-orange-800 border-orange-300",
+  DTV承認: "bg-emerald-100 text-emerald-800 border-emerald-300",
 };
 
 const STATUS_I18N: Record<ApplicationStatus, string> = {
@@ -21,6 +22,8 @@ const STATUS_I18N: Record<ApplicationStatus, string> = {
   書類不足: "status.insufficient",
   提出準備完了: "status.ready",
   大使館提出済み: "status.submitted",
+  大使館修正依頼: "status.embassy_revision",
+  DTV承認: "status.dtv_approved",
 };
 
 const STEP_INDEX: Record<ApplicationStatus, number> = {
@@ -29,6 +32,8 @@ const STEP_INDEX: Record<ApplicationStatus, number> = {
   書類不足: 1,
   提出準備完了: 2,
   大使館提出済み: 3,
+  大使館修正依頼: 3,
+  DTV承認: 4,
 };
 
 const DOC_KEYS: Array<{ key: DocumentKey; required: boolean }> = [
@@ -38,29 +43,35 @@ const DOC_KEYS: Array<{ key: DocumentKey; required: boolean }> = [
   { key: "driverLicense", required: true },
 ];
 
-// Document types: image-based vs PDF-based
-const DOC_TYPE: Record<DocumentKey, "image" | "pdf"> = {
-  passport: "image",
-  bankStatement: "pdf",
-  photo: "image",
-  driverLicense: "image",
-  flightTicket: "pdf",
-  pgaLicense: "pdf",
-  acceptanceLetter: "pdf",
-  invoice: "pdf",
-  existingPdfBundle: "pdf",
-};
 
 function DocPreviewModal({
   docKey,
+  storagePath,
   onClose,
 }: {
   docKey: DocumentKey;
+  storagePath?: string;
   onClose: () => void;
 }) {
   const { t } = useI18n();
   const label = t(`docs.${docKey}`);
-  const isImage = DOC_TYPE[docKey] === "image";
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const [isImage, setIsImage] = useState(false);
+
+  useEffect(() => {
+    if (!storagePath) return;
+    setLoading(true);
+    fetch(`/api/files?path=${encodeURIComponent(storagePath)}`)
+      .then((r) => r.json())
+      .then(({ url }) => {
+        setSignedUrl(url ?? null);
+        const ext = storagePath.split(".").pop()?.toLowerCase() ?? "";
+        setIsImage(["jpg", "jpeg", "png", "webp", "gif"].includes(ext));
+      })
+      .catch(console.error)
+      .finally(() => setLoading(false));
+  }, [storagePath]);
 
   return (
     <div
@@ -71,7 +82,6 @@ function DocPreviewModal({
         className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden"
         onClick={(e) => e.stopPropagation()}
       >
-        {/* Modal Header */}
         <div className="flex items-center justify-between px-6 py-4 border-b border-gray-200">
           <div>
             <p className="text-xs text-gray-400 mb-0.5">{t("common.preview")}</p>
@@ -85,110 +95,42 @@ function DocPreviewModal({
           </button>
         </div>
 
-        {/* Preview Area */}
         <div className="p-6">
-          {isImage ? (
-            // Image document mock preview
-            <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-8 flex flex-col items-center justify-center min-h-64">
-              {docKey === "photo" ? (
-                <>
-                  <div className="w-28 h-36 bg-blue-50 border-2 border-blue-200 rounded-lg flex items-center justify-center mb-4 relative">
-                    <div className="w-16 h-16 rounded-full bg-gray-200 flex items-center justify-center">
-                      <span className="text-3xl">👤</span>
-                    </div>
-                    {/* Guide frame */}
-                    <div className="absolute inset-2 border-2 border-dashed border-blue-400 rounded opacity-60" />
-                  </div>
-                  <p className="text-xs text-gray-400">4.5cm × 3.5cm</p>
-                </>
-              ) : docKey === "passport" ? (
-                <>
-                  <div className="w-full max-w-sm bg-gradient-to-br from-blue-900 to-blue-700 rounded-xl p-5 text-white mb-4">
-                    <div className="flex justify-between items-start mb-4">
-                      <div>
-                        <p className="text-xs opacity-60">PASSPORT</p>
-                        <p className="text-sm font-mono mt-1">JPN</p>
-                      </div>
-                      <span className="text-2xl">🛂</span>
-                    </div>
-                    <div className="bg-white/10 rounded-lg p-3 mb-3">
-                      <div className="flex gap-3 items-center">
-                        <div className="w-12 h-14 bg-white/20 rounded flex items-center justify-center text-xl">
-                          👤
-                        </div>
-                        <div>
-                          <div className="h-2 bg-white/40 rounded w-20 mb-1.5" />
-                          <div className="h-2 bg-white/30 rounded w-16 mb-1.5" />
-                          <div className="h-2 bg-white/30 rounded w-12" />
-                        </div>
-                      </div>
-                    </div>
-                    <div className="font-mono text-xs opacity-60 tracking-wider">
-                      P&lt;JPN&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;&lt;
-                    </div>
-                  </div>
-                </>
-              ) : (
-                <>
-                  <div className="w-24 h-16 bg-gray-100 rounded-lg border border-gray-200 flex items-center justify-center mb-4">
-                    <span className="text-3xl">🪪</span>
-                  </div>
-                </>
-              )}
-              <p className="text-xs text-gray-400 mt-2">
-                {t("mypage.uploaded")}（モックプレビュー）
-              </p>
+          {loading ? (
+            <div className="flex items-center justify-center min-h-48">
+              <span className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+            </div>
+          ) : signedUrl && isImage ? (
+            <img
+              src={signedUrl}
+              alt={label}
+              className="w-full max-h-96 object-contain rounded-xl border border-gray-200"
+            />
+          ) : signedUrl ? (
+            <div className="bg-gray-50 rounded-xl border border-gray-200 p-6 flex items-center gap-4">
+              <div className="w-12 h-14 bg-red-50 border border-red-200 rounded flex items-center justify-center flex-shrink-0">
+                <span className="text-xs font-bold text-red-500">PDF</span>
+              </div>
+              <div>
+                <p className="font-medium text-gray-800 text-sm">{label}</p>
+                <a
+                  href={signedUrl}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-xs text-blue-500 hover:underline mt-1 inline-block"
+                >
+                  PDFを開く →
+                </a>
+              </div>
             </div>
           ) : (
-            // PDF document mock preview
-            <div className="bg-gray-50 border-2 border-dashed border-gray-200 rounded-xl p-6 min-h-64">
-              <div className="bg-white rounded-lg border border-gray-200 shadow-sm p-5">
-                {/* PDF header */}
-                <div className="flex items-center gap-3 mb-4 pb-3 border-b border-gray-100">
-                  <div className="w-10 h-12 bg-red-50 border border-red-200 rounded flex items-center justify-center">
-                    <span className="text-xs font-bold text-red-500">PDF</span>
-                  </div>
-                  <div>
-                    <p className="font-semibold text-gray-800 text-sm">{label}</p>
-                    <p className="text-xs text-gray-400">document.pdf</p>
-                  </div>
-                </div>
-                {/* Mock content lines */}
-                <div className="space-y-2">
-                  {[80, 65, 75, 50, 70, 45, 60].map((w, i) => (
-                    <div
-                      key={i}
-                      className="h-2.5 bg-gray-100 rounded"
-                      style={{ width: `${w}%` }}
-                    />
-                  ))}
-                </div>
-                {/* Mock table */}
-                <div className="mt-4 border border-gray-100 rounded overflow-hidden">
-                  {[1, 2, 3].map((r) => (
-                    <div
-                      key={r}
-                      className="flex border-b border-gray-100 last:border-0"
-                    >
-                      <div className="w-1/3 px-3 py-2 bg-gray-50 border-r border-gray-100">
-                        <div className="h-2 bg-gray-200 rounded w-full" />
-                      </div>
-                      <div className="flex-1 px-3 py-2">
-                        <div className="h-2 bg-gray-100 rounded w-3/4" />
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </div>
-              <p className="text-xs text-gray-400 mt-3 text-center">
-                {t("mypage.uploaded")}（モックプレビュー）
-              </p>
+            <div className="flex items-center justify-center min-h-48 text-gray-400 text-sm">
+              プレビューを読み込めませんでした
             </div>
           )}
         </div>
 
-        {/* Footer */}
-        <div className="px-6 pb-5 flex justify-end gap-2">
+        <div className="px-6 pb-5 flex justify-end">
           <button
             onClick={onClose}
             className="px-4 py-2 border border-gray-300 text-gray-600 text-sm rounded-lg hover:bg-gray-50 transition-colors"
@@ -202,12 +144,45 @@ function DocPreviewModal({
 }
 
 function MyPageContent() {
-  const { applicants } = useStore();
-  const { user } = useAuth();
+  const { myApplication, isLoading, updateDocument } = useStore();
   const { t } = useI18n();
   const [previewDoc, setPreviewDoc] = useState<DocumentKey | null>(null);
+  const [uploading, setUploading] = useState<Partial<Record<DocumentKey, boolean>>>({});
+  const [uploadError, setUploadError] = useState<string | null>(null);
+  const fileRefs = useRef<Partial<Record<DocumentKey, HTMLInputElement | null>>>({});
 
-  const applicant = applicants.find((a) => a.id === user?.userId);
+  const handleUpload = async (key: DocumentKey, file: File) => {
+    if (!myApplication) return;
+    setUploading((p) => ({ ...p, [key]: true }));
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("applicationId", myApplication.id);
+      formData.append("documentKey", key);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (res.ok) {
+        updateDocument(myApplication.id, key, true);
+      } else {
+        setUploadError(`アップロードエラー: ${json.error ?? res.status}`);
+      }
+    } catch (e) {
+      setUploadError(`エラー: ${e instanceof Error ? e.message : "不明"}`);
+    } finally {
+      setUploading((p) => ({ ...p, [key]: false }));
+    }
+  };
+
+  if (isLoading) {
+    return (
+      <div className="flex items-center justify-center min-h-[40vh]">
+        <div className="text-gray-400 text-sm">読み込み中...</div>
+      </div>
+    );
+  }
+
+  const applicant = myApplication;
   if (!applicant) return null;
 
   const stepIndex = STEP_INDEX[applicant.status];
@@ -301,16 +276,26 @@ function MyPageContent() {
         <h2 className="text-sm font-semibold text-gray-600 mb-4">
           {t("mypage.doc_list_title")}
         </h2>
+        {uploadError && (
+          <div className="mb-3 bg-red-50 border border-red-200 rounded-lg px-3 py-2 flex items-center gap-2">
+            <span className="text-red-500 text-sm">⚠️</span>
+            <p className="text-xs text-red-600 flex-1">{uploadError}</p>
+            <button onClick={() => setUploadError(null)} className="text-red-400 hover:text-red-600">✕</button>
+          </div>
+        )}
         <div className="space-y-2">
           {DOC_KEYS.map(({ key, required }) => {
             const uploaded = applicant.documents[key];
+            const isUploading = uploading[key];
             return (
               <div
                 key={key}
                 className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0"
               >
                 <div className="flex items-center gap-3">
-                  {uploaded ? (
+                  {isUploading ? (
+                    <span className="w-[18px] h-[18px] rounded-full border-2 border-blue-400 border-t-transparent animate-spin flex-shrink-0" />
+                  ) : uploaded ? (
                     <CheckCircle2 size={18} className="text-green-500 flex-shrink-0" />
                   ) : (
                     <MinusCircle size={18} className="text-gray-300 flex-shrink-0" />
@@ -334,14 +319,33 @@ function MyPageContent() {
                       </button>
                       <button
                         title={t("common.replace")}
+                        onClick={() => fileRefs.current[key]?.click()}
                         className="w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 text-blue-500 hover:bg-blue-50 transition-colors"
                       >
                         <RefreshCw size={14} />
                       </button>
                     </>
                   ) : (
-                    <span className="text-xs text-gray-400">{t("mypage.not_submitted")}</span>
+                    <button
+                      onClick={() => fileRefs.current[key]?.click()}
+                      disabled={isUploading}
+                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg transition-colors"
+                    >
+                      <Upload size={12} />
+                      {t("common.upload")}
+                    </button>
                   )}
+                  <input
+                    ref={(el) => { fileRefs.current[key] = el; }}
+                    type="file"
+                    className="hidden"
+                    accept="image/*,.pdf"
+                    onChange={(e) => {
+                      const file = e.target.files?.[0];
+                      if (file) handleUpload(key, file);
+                      e.target.value = "";
+                    }}
+                  />
                 </div>
               </div>
             );
@@ -353,6 +357,7 @@ function MyPageContent() {
       {previewDoc && (
         <DocPreviewModal
           docKey={previewDoc}
+          storagePath={applicant.documentPaths?.[previewDoc]}
           onClose={() => setPreviewDoc(null)}
         />
       )}

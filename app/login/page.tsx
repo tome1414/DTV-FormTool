@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
+import Link from "next/link";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
 
@@ -14,20 +15,22 @@ export default function LoginPage() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setError("");
     setLoading(true);
-
-    setTimeout(() => {
-      const user = login(email, password);
-      setLoading(false);
+    try {
+      const user = await login(email, password);
       if (!user) {
         setError(t("login.error"));
         return;
       }
-      router.push(user.role === "admin" ? "/admin" : "/mypage");
-    }, 400);
+      router.push(user.role === "applicant" ? "/mypage" : "/admin");
+    } catch {
+      setError(t("login.error"));
+    } finally {
+      setLoading(false);
+    }
   };
 
   return (
@@ -95,15 +98,16 @@ export default function LoginPage() {
 
           {/* Create account */}
           <div className="text-center mt-5">
-            <button className="text-sm text-blue-600 hover:underline">
+            <Link href="/register" className="text-sm text-blue-600 hover:underline">
               {t("login.create_account")}
-            </button>
+            </Link>
           </div>
 
           {/* Hints */}
           <div className="mt-7 border-t border-gray-100 pt-5 space-y-1.5">
             <p className="text-xs text-gray-400">{t("login.hint_applicant")}</p>
             <p className="text-xs text-gray-400">{t("login.hint_admin")}</p>
+            <p className="text-xs text-gray-400">Owner: owner@example.com / owner123</p>
           </div>
         </div>
       </div>

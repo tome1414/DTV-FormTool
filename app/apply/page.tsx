@@ -1,15 +1,19 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { AlertTriangle, Loader2, ExternalLink } from "lucide-react";
+import { ExternalLink, Pencil, Check, X } from "lucide-react";
 import { useI18n } from "@/lib/i18n";
-import { checkPassportMargin, checkPhotoBackground, type AnalysisWarning } from "@/lib/imageAnalysis";
-import { CONSULATE_REGIONS, findConsulateById, type Consulate } from "@/lib/consulateData";
+import { useAuth } from "@/lib/auth";
+import { useStore } from "@/lib/store";
+import { checkPassportMargin, checkPhotoBackground } from "@/lib/imageAnalysis";
+import { CONSULATE_REGIONS, findConsulateById, findConsulateLocation } from "@/lib/consulateData";
+import NationalitySelect from "@/components/NationalitySelect";
 import AuthGuard from "@/components/AuthGuard";
 
 interface UploadedFile {
   file: File;
   preview: string | null;
+  storagePath?: string;
 }
 
 interface DocConfig {
@@ -28,24 +32,45 @@ const DOC_CONFIGS: DocConfig[] = [
 
 function ApplyContent() {
   const { t } = useI18n();
+  const { user, updateProfile } = useAuth();
+  const { setAutoWarning, updateDocument, myApplication } = useStore();
+
   const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({ passport: true });
   const [uploads, setUploads] = useState<Record<string, UploadedFile | null>>({});
+  const [uploading, setUploading] = useState<Record<string, boolean>>({});
+  const [uploadError, setUploadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, "upload" | "preview">>({});
   const [submitted, setSubmitted] = useState(false);
-  const [imageWarnings, setImageWarnings] = useState<Record<string, AnalysisWarning | null>>({});
-  const [analyzing, setAnalyzing] = useState<Record<string, boolean>>({});
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
-  // Applicant info form
-  const [nationality, setNationality] = useState("");
-  const [selectedRegion, setSelectedRegion] = useState("");
-  const [selectedCountry, setSelectedCountry] = useState("");
-  const [selectedConsulateId, setSelectedConsulateId] = useState("");
+  const consulateInfo = user?.consulateId ? findConsulateById(user.consulateId) : null;
 
-  const regionData = CONSULATE_REGIONS.find((r) => r.id === selectedRegion);
-  const countryData = regionData?.countries.find((c) => c.country_ja === selectedCountry);
-  const consulateInfo: (Consulate & { country_ja: string; country_en: string; region_ja: string }) | null =
-    selectedConsulateId ? findConsulateById(selectedConsulateId) : null;
+  // ── Inline profile edit state ──
+  const [isEditingProfile, setIsEditingProfile] = useState(false);
+  const [editNationality, setEditNationality] = useState("");
+  const [editRegion, setEditRegion] = useState("");
+  const [editCountry, setEditCountry] = useState("");
+  const [editConsulateId, setEditConsulateId] = useState("");
+
+  const editRegionData = CONSULATE_REGIONS.find((r) => r.id === editRegion);
+  const editCountryData = editRegionData?.countries.find((c) => c.country_ja === editCountry);
+  const editConsulateInfo = editConsulateId ? findConsulateById(editConsulateId) : null;
+
+  const startEditProfile = () => {
+    const loc = user?.consulateId ? findConsulateLocation(user.consulateId) : null;
+    setEditNationality(user?.nationality ?? "");
+    setEditRegion(loc?.regionId ?? "");
+    setEditCountry(loc?.countryJa ?? "");
+    setEditConsulateId(user?.consulateId ?? "");
+    setIsEditingProfile(true);
+  };
+
+  const saveProfile = () => {
+    if (editNationality && editConsulateId) {
+      updateProfile({ nationality: editNationality, consulateId: editConsulateId });
+    }
+    setIsEditingProfile(false);
+  };
 
   const toggle = (key: string) =>
     setOpenKeys((prev) => ({ ...prev, [key]: !prev[key] }));
@@ -55,15 +80,39 @@ function ApplyContent() {
     const preview = isImage ? URL.createObjectURL(file) : null;
     setUploads((prev) => ({ ...prev, [key]: { file, preview } }));
     setActiveTab((prev) => ({ ...prev, [key]: "preview" }));
-    setImageWarnings((prev) => ({ ...prev, [key]: null }));
 
-    if (isImage && (key === "passport" || key === "photo")) {
-      setAnalyzing((prev) => ({ ...prev, [key]: true }));
-      const warning =
-        key === "passport" ? await checkPassportMargin(file)
-        : await checkPhotoBackground(file);
-      setImageWarnings((prev) => ({ ...prev, [key]: warning }));
-      setAnalyzing((prev) => ({ ...prev, [key]: false }));
+    // Upload to Supabase Storage
+    if (!myApplication) {
+      setUploadError("申請情報が読み込まれていません。ページを再読み込みしてください。");
+      return;
+    }
+    setUploading((prev) => ({ ...prev, [key]: true }));
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("applicationId", myApplication.id);
+      formData.append("documentKey", key);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (res.ok) {
+        setUploads((prev) => prev[key] ? { ...prev, [key]: { ...prev[key]!, storagePath: json.path } } : prev);
+        updateDocument(myApplication.id, key as import("@/lib/store").DocumentKey, true);
+      } else {
+        setUploadError(`アップロードエラー: ${json.error ?? res.status}`);
+      }
+    } catch (e) {
+      setUploadError(`ネットワークエラー: ${e instanceof Error ? e.message : "不明"}`);
+    } finally {
+      setUploading((prev) => ({ ...prev, [key]: false }));
+    }
+
+    // Run Canvas API silently — result surfaces in admin panel only
+    if (isImage && myApplication && (key === "passport" || key === "photo")) {
+      const check = key === "passport" ? checkPassportMargin : checkPhotoBackground;
+      check(file).then((warning) => {
+        setAutoWarning(myApplication.id, key as import("@/lib/store").DocumentKey, warning?.message ?? null);
+      });
     }
   };
 
@@ -74,10 +123,17 @@ function ApplyContent() {
   };
 
   const handleRemove = (key: string) => {
+    const storagePath = uploads[key]?.storagePath;
     setUploads((prev) => ({ ...prev, [key]: null }));
     setActiveTab((prev) => ({ ...prev, [key]: "upload" }));
-    setImageWarnings((prev) => ({ ...prev, [key]: null }));
+    if (myApplication) {
+      setAutoWarning(myApplication.id, key as import("@/lib/store").DocumentKey, null);
+      updateDocument(myApplication.id, key as import("@/lib/store").DocumentKey, false);
+    }
     if (fileRefs.current[key]) fileRefs.current[key]!.value = "";
+    if (storagePath) {
+      fetch(`/api/files?path=${encodeURIComponent(storagePath)}`, { method: "DELETE" }).catch(console.error);
+    }
   };
 
   const requiredKeys = DOC_CONFIGS.filter((d) => d.required).map((d) => d.key);
@@ -108,91 +164,142 @@ function ApplyContent() {
       <h1 className="text-2xl font-bold text-gray-800 mb-1">{t("apply.title")}</h1>
       <p className="text-gray-500 text-sm mb-6">{t("apply.subtitle")}</p>
 
-      {/* ── Applicant Info Form ── */}
+      {/* ── Applicant Info ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
-        <h2 className="text-sm font-semibold text-gray-700 mb-4">申請者情報</h2>
-
-        {/* Nationality */}
-        <div className="mb-4">
-          <label className="block text-xs font-medium text-gray-500 mb-1">国籍</label>
-          <input
-            type="text"
-            value={nationality}
-            onChange={(e) => setNationality(e.target.value)}
-            placeholder="例：日本、韓国、中国..."
-            className="w-full border border-gray-300 rounded-lg px-3 py-2 text-sm focus:outline-none focus:border-blue-500"
-          />
+        <div className="flex items-center justify-between mb-3">
+          <h2 className="text-sm font-semibold text-gray-700">申請者情報</h2>
+          {!isEditingProfile && (
+            <button
+              onClick={startEditProfile}
+              className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
+            >
+              <Pencil size={12} />
+              変更
+            </button>
+          )}
         </div>
 
-        {/* Consulate cascade */}
-        <div className="mb-1">
-          <label className="block text-xs font-medium text-gray-500 mb-1">申請予定の領事館</label>
-          <div className="grid grid-cols-3 gap-2">
-            {/* Region */}
-            <select
-              value={selectedRegion}
-              onChange={(e) => { setSelectedRegion(e.target.value); setSelectedCountry(""); setSelectedConsulateId(""); }}
-              className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white"
-            >
-              <option value="">地域を選択</option>
-              {CONSULATE_REGIONS.map((r) => (
-                <option key={r.id} value={r.id}>{r.label_ja}</option>
-              ))}
-            </select>
+        {isEditingProfile ? (
+          /* ── Edit mode ── */
+          <div className="space-y-4">
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">国籍</label>
+              <NationalitySelect value={editNationality} onChange={setEditNationality} />
+            </div>
 
-            {/* Country */}
-            <select
-              value={selectedCountry}
-              onChange={(e) => { setSelectedCountry(e.target.value); setSelectedConsulateId(""); }}
-              disabled={!selectedRegion}
-              className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
-            >
-              <option value="">国を選択</option>
-              {regionData?.countries.map((c) => (
-                <option key={c.country_ja} value={c.country_ja}>{c.country_ja}</option>
-              ))}
-            </select>
+            <div>
+              <label className="block text-xs font-medium text-gray-500 mb-1">申請予定の領事館</label>
+              <div className="grid grid-cols-3 gap-2">
+                <select
+                  value={editRegion}
+                  onChange={(e) => { setEditRegion(e.target.value); setEditCountry(""); setEditConsulateId(""); }}
+                  className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white"
+                >
+                  <option value="">地域</option>
+                  {CONSULATE_REGIONS.map((r) => (
+                    <option key={r.id} value={r.id}>{r.label_ja}</option>
+                  ))}
+                </select>
+                <select
+                  value={editCountry}
+                  onChange={(e) => { setEditCountry(e.target.value); setEditConsulateId(""); }}
+                  disabled={!editRegion}
+                  className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">国</option>
+                  {editRegionData?.countries.map((c) => (
+                    <option key={c.country_ja} value={c.country_ja}>{c.country_ja}</option>
+                  ))}
+                </select>
+                <select
+                  value={editConsulateId}
+                  onChange={(e) => setEditConsulateId(e.target.value)}
+                  disabled={!editCountry}
+                  className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                >
+                  <option value="">公館</option>
+                  {editCountryData?.consulates.map((c) => (
+                    <option key={c.id} value={c.id}>{c.type}（{c.city_ja}）</option>
+                  ))}
+                </select>
+              </div>
+              {editConsulateInfo && (
+                <p className="mt-1.5 text-xs text-blue-700 font-medium">{editConsulateInfo.name_ja}</p>
+              )}
+            </div>
 
-            {/* Consulate */}
-            <select
-              value={selectedConsulateId}
-              onChange={(e) => setSelectedConsulateId(e.target.value)}
-              disabled={!selectedCountry}
-              className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
-            >
-              <option value="">公館を選択</option>
-              {countryData?.consulates.map((c) => (
-                <option key={c.id} value={c.id}>{c.type}（{c.city_ja}）</option>
-              ))}
-            </select>
+            <div className="flex gap-2 pt-1">
+              <button
+                onClick={saveProfile}
+                disabled={!editNationality || !editConsulateId}
+                className="flex items-center gap-1.5 text-sm px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
+              >
+                <Check size={13} />
+                保存
+              </button>
+              <button
+                onClick={() => setIsEditingProfile(false)}
+                className="flex items-center gap-1.5 text-sm px-4 py-1.5 border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
+              >
+                <X size={13} />
+                キャンセル
+              </button>
+            </div>
           </div>
-        </div>
-
-        {/* Selected consulate info card */}
-        {consulateInfo && (
-          <div className="mt-3 bg-blue-50 border border-blue-200 rounded-lg px-4 py-3">
-            <p className="text-xs font-semibold text-blue-800 mb-0.5">{consulateInfo.name_ja}</p>
-            <p className="text-xs text-blue-600 mb-2">{consulateInfo.name_en}</p>
-            {consulateInfo.note && (
-              <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 mb-2">
-                ⚠️ {consulateInfo.note}
-              </p>
-            )}
-            <a
-              href={consulateInfo.url}
-              target="_blank"
-              rel="noopener noreferrer"
-              className="inline-flex items-center gap-1 text-xs text-blue-600 hover:underline"
-            >
-              <ExternalLink size={11} />
-              公式サイトで最新情報を確認する
-            </a>
-            <p className="text-xs text-gray-400 mt-1">
-              ※ 管轄・居住地要件・必要書類・手数料・予約要否は各公館の公式サイトでご確認ください
-            </p>
+        ) : user?.nationality && user?.consulateId ? (
+          /* ── Read-only mode ── */
+          <div className="space-y-2">
+            <div className="flex items-center gap-3">
+              <span className="text-xs text-gray-500 w-16 shrink-0">国籍</span>
+              <span className="text-sm font-medium text-gray-800">{user.nationality}</span>
+            </div>
+            <div className="flex items-start gap-3">
+              <span className="text-xs text-gray-500 w-16 shrink-0 mt-0.5">申請先</span>
+              <div>
+                {consulateInfo ? (
+                  <>
+                    <p className="text-sm font-medium text-gray-800">{consulateInfo.name_ja}</p>
+                    <p className="text-xs text-gray-400">{consulateInfo.name_en}</p>
+                    {consulateInfo.note && (
+                      <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 mt-1.5">
+                        ⚠️ {consulateInfo.note}
+                      </p>
+                    )}
+                    <a
+                      href={consulateInfo.url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline mt-1"
+                    >
+                      <ExternalLink size={10} />
+                      公式サイトで確認
+                    </a>
+                  </>
+                ) : (
+                  <span className="text-sm text-gray-500">{user.consulateId}</span>
+                )}
+              </div>
+            </div>
+          </div>
+        ) : (
+          /* ── Not set ── */
+          <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-800">
+            国籍・申請先が未設定です。
+            <button onClick={startEditProfile} className="ml-2 underline font-medium">
+              こちらから設定してください
+            </button>
           </div>
         )}
       </div>
+
+      {/* Upload error */}
+      {uploadError && (
+        <div className="bg-red-50 border border-red-300 rounded-xl px-4 py-3 mb-4 flex items-center gap-3">
+          <span className="text-red-500 text-lg">⚠️</span>
+          <p className="text-sm text-red-700 flex-1">{uploadError}</p>
+          <button onClick={() => setUploadError(null)} className="text-red-400 hover:text-red-600 text-lg leading-none">✕</button>
+        </div>
+      )}
 
       {/* Progress */}
       <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
@@ -233,7 +340,9 @@ function ApplyContent() {
                 onClick={() => toggle(doc.key)}
               >
                 <div className="flex items-center gap-3">
-                  {uploaded ? (
+                  {uploading[doc.key] ? (
+                    <span className="w-5 h-5 rounded-full border-2 border-blue-400 border-t-transparent animate-spin flex-shrink-0" />
+                  ) : uploaded ? (
                     <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
                       ✓
                     </span>
@@ -271,9 +380,7 @@ function ApplyContent() {
                   {uploaded && (
                     <div className="flex gap-2 mt-3 mb-3">
                       <button
-                        onClick={() =>
-                          setActiveTab((p) => ({ ...p, [doc.key]: "upload" }))
-                        }
+                        onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "upload" }))}
                         className={`text-sm px-3 py-1 rounded-md border transition-colors ${
                           tab === "upload"
                             ? "bg-blue-600 text-white border-blue-600"
@@ -283,9 +390,7 @@ function ApplyContent() {
                         {t("common.upload")}
                       </button>
                       <button
-                        onClick={() =>
-                          setActiveTab((p) => ({ ...p, [doc.key]: "preview" }))
-                        }
+                        onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "preview" }))}
                         className={`text-sm px-3 py-1 rounded-md border transition-colors ${
                           tab === "preview"
                             ? "bg-blue-600 text-white border-blue-600"
@@ -309,9 +414,7 @@ function ApplyContent() {
                       <p className="text-gray-600 text-sm">{t("apply.drag_drop")}</p>
                       <p className="text-gray-400 text-xs mt-1">{t("apply.file_types")}</p>
                       <input
-                        ref={(el) => {
-                          fileRefs.current[doc.key] = el;
-                        }}
+                        ref={(el) => { fileRefs.current[doc.key] = el; }}
                         type="file"
                         className="hidden"
                         accept="image/*,.pdf"
@@ -355,21 +458,6 @@ function ApplyContent() {
                           </div>
                         </div>
                       )}
-                      {/* Canvas API analysis result */}
-                      {analyzing[doc.key] && (
-                        <div className="mt-2 flex items-center gap-2 text-xs text-gray-400">
-                          <Loader2 size={12} className="animate-spin" />
-                          <span>画像を解析中...</span>
-                        </div>
-                      )}
-                      {!analyzing[doc.key] && imageWarnings[doc.key] && (
-                        <div className="mt-2 flex items-start gap-2 bg-orange-50 border border-orange-200 rounded-lg px-3 py-2">
-                          <AlertTriangle size={14} className="text-orange-500 flex-shrink-0 mt-0.5" />
-                          <p className="text-xs text-orange-700 leading-relaxed">
-                            {imageWarnings[doc.key]!.message}
-                          </p>
-                        </div>
-                      )}
                       <div className="flex gap-2 mt-3">
                         <button
                           onClick={() => fileRefs.current[doc.key]?.click()}
@@ -384,9 +472,7 @@ function ApplyContent() {
                           {t("common.delete")}
                         </button>
                         <input
-                          ref={(el) => {
-                            fileRefs.current[doc.key] = el;
-                          }}
+                          ref={(el) => { fileRefs.current[doc.key] = el; }}
                           type="file"
                           className="hidden"
                           accept="image/*,.pdf"

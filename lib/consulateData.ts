@@ -348,6 +348,18 @@ export const CONSULATE_REGIONS: ConsulateRegion[] = [
   },
 ];
 
+// Find the region ID and country for a consulate (used to pre-fill cascade selects)
+export function findConsulateLocation(id: string): { regionId: string; countryJa: string } | null {
+  for (const region of CONSULATE_REGIONS) {
+    for (const country of region.countries) {
+      if (country.consulates.some((c) => c.id === id)) {
+        return { regionId: region.id, countryJa: country.country_ja };
+      }
+    }
+  }
+  return null;
+}
+
 // Flat lookup by consulate ID
 export function findConsulateById(id: string): (Consulate & { country_ja: string; country_en: string; region_ja: string }) | null {
   for (const region of CONSULATE_REGIONS) {
