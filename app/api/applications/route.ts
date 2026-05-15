@@ -1,6 +1,5 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, ApplicationStatus } from "@/lib/supabase";
-import { createSupabaseServer } from "@/lib/supabase-server";
 import { getSessionUser, isAdmin, unauthorized } from "@/lib/api-auth";
 
 const DOC_SELECT = `document_key, is_uploaded, is_approved, warning, auto_warning, storage_path, file_name, mime_type, uploaded_at`;
@@ -39,11 +38,11 @@ export async function GET(request: NextRequest) {
     return NextResponse.json({ data, count }, { status: 200 });
   }
 
-  // ── 申請者: createSupabaseServer（RLS適用）で自分のデータのみ ──
-  const supabase = createSupabaseServer();
-  const { data, error } = await supabase
+  // ── 申請者: supabaseAdmin + user_id フィルター（RLSネストクエリ問題を回避）──
+  const { data, error } = await supabaseAdmin
     .from("applications")
     .select(`*, documents(${DOC_SELECT}), status_history(status, timestamp)`)
+    .eq("user_id", sessionUser.userId)
     .order("submitted_at", { ascending: false });
 
   if (error) return NextResponse.json({ error: error.message }, { status: 500 });
