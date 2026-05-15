@@ -1,51 +1,60 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, ApplicationStatus } from "@/lib/supabase";
+import { createSupabaseServer } from "@/lib/supabase-server";
+import { getSessionUser, isAdmin, unauthorized } from "@/lib/api-auth";
 
-// GET /api/applications?status=確認待ち&search=田中&limit=50&offset=0
+const DOC_SELECT = `document_key, is_uploaded, is_approved, warning, auto_warning, storage_path, file_name, mime_type, uploaded_at`;
+
+// GET /api/applications
 export async function GET(request: NextRequest) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) return unauthorized();
+
   const { searchParams } = request.nextUrl;
   const status = searchParams.get("status") as ApplicationStatus | null;
   const search = searchParams.get("search");
   const limit = Math.min(Number(searchParams.get("limit") ?? 50), 100);
   const offset = Number(searchParams.get("offset") ?? 0);
 
-  const userId = searchParams.get("userId");
+  // ── 管理者: supabaseAdmin（RLSバイパス）で全件取得 ──────────────
+  if (isAdmin(sessionUser)) {
+    let query = supabaseAdmin
+      .from("applications")
+      .select(
+        `*, documents(${DOC_SELECT}), status_history(status, timestamp)`,
+        { count: "exact" }
+      )
+      .order("submitted_at", { ascending: false })
+      .range(offset, offset + limit - 1);
 
-  let query = supabaseAdmin
+    if (status) query = query.eq("status", status);
+    if (search) {
+      query = query.or(
+        `last_name.ilike.%${search}%,first_name.ilike.%${search}%,email.ilike.%${search}%,application_number.ilike.%${search}%`
+      );
+    }
+
+    const { data, error, count } = await query;
+    if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ data, count }, { status: 200 });
+  }
+
+  // ── 申請者: createSupabaseServer（RLS適用）で自分のデータのみ ──
+  const supabase = createSupabaseServer();
+  const { data, error } = await supabase
     .from("applications")
-    .select(
-      `*,
-       documents(document_key, is_uploaded, is_approved, warning, auto_warning, storage_path, file_name, mime_type, uploaded_at),
-       status_history(status, timestamp)`,
-      { count: "exact" }
-    )
-    .order("submitted_at", { ascending: false })
-    .range(offset, offset + limit - 1);
+    .select(`*, documents(${DOC_SELECT}), status_history(status, timestamp)`)
+    .order("submitted_at", { ascending: false });
 
-  if (userId) {
-    query = query.eq("user_id", userId);
-  }
-  if (status) {
-    query = query.eq("status", status);
-  }
-  if (search) {
-    query = query.or(
-      `last_name.ilike.%${search}%,first_name.ilike.%${search}%,email.ilike.%${search}%,application_number.ilike.%${search}%`
-    );
-  }
-
-  const { data, error, count } = await query;
-
-  if (error) {
-    console.error("[applications GET]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
-
-  return NextResponse.json({ data, count }, { status: 200 });
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
+  return NextResponse.json({ data: data ?? [], count: data?.length ?? 0 }, { status: 200 });
 }
 
 // POST /api/applications
 export async function POST(request: NextRequest) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) return unauthorized();
+
   let body: {
     lastName: string;
     firstName: string;
@@ -62,7 +71,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "Invalid JSON" }, { status: 400 });
   }
 
-  const { lastName, firstName, middleName, email, nationality, consulateId, userId } = body;
+  const { lastName, firstName, middleName, email, nationality, consulateId } = body;
 
   if (!lastName || !firstName || !email) {
     return NextResponse.json(
@@ -71,7 +80,9 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // アプリケーション作成
+  // 申請者は自分のユーザーIDのみ設定可、管理者は指定IDを使用可
+  const userId = isAdmin(sessionUser) ? (body.userId ?? sessionUser.userId) : sessionUser.userId;
+
   const { data: app, error: appError } = await supabaseAdmin
     .from("applications")
     .insert({
@@ -81,7 +92,7 @@ export async function POST(request: NextRequest) {
       email,
       nationality: nationality ?? null,
       consulate_id: consulateId ?? null,
-      user_id: userId ?? null,
+      user_id: userId,
     })
     .select()
     .single();
@@ -91,28 +102,19 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: appError.message }, { status: 500 });
   }
 
-  // 9種類の書類レコードを初期化
   const DOCUMENT_KEYS = [
     "passport", "bankStatement", "photo", "driverLicense",
     "flightTicket", "pgaLicense", "acceptanceLetter", "invoice", "existingPdfBundle",
   ];
 
-  const { error: docsError } = await supabaseAdmin.from("documents").insert(
-    DOCUMENT_KEYS.map((key) => ({
-      application_id: app.id,
-      document_key: key,
-    }))
+  await supabaseAdmin.from("documents").insert(
+    DOCUMENT_KEYS.map((key) => ({ application_id: app.id, document_key: key }))
   );
 
-  if (docsError) {
-    console.error("[applications POST] docs init error", docsError);
-  }
-
-  // 初期ステータス履歴を記録
   await supabaseAdmin.from("status_history").insert({
     application_id: app.id,
     status: "確認待ち",
-    changed_by: userId ?? null,
+    changed_by: userId,
   });
 
   return NextResponse.json({ data: app }, { status: 201 });

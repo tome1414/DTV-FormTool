@@ -1,9 +1,12 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, DocumentKey } from "@/lib/supabase";
+import { getSessionUser, isAdmin, unauthorized, forbidden, canAccessApplication } from "@/lib/api-auth";
 
 // PATCH /api/documents
-// 書類レコードの個別フィールドを更新（警告メモ・承認状態・アップロード状態・自動検出警告）
 export async function PATCH(request: NextRequest) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) return unauthorized();
+
   let body: {
     applicationId: string;
     documentKey: DocumentKey;
@@ -22,10 +25,14 @@ export async function PATCH(request: NextRequest) {
   const { applicationId, documentKey, isUploaded, isApproved, warning, autoWarning } = body;
 
   if (!applicationId || !documentKey) {
-    return NextResponse.json(
-      { error: "applicationId and documentKey are required" },
-      { status: 400 }
-    );
+    return NextResponse.json({ error: "applicationId and documentKey are required" }, { status: 400 });
+  }
+
+  // 申請者は自分の申請のみ更新可。管理者専用フィールド（isApproved/warning/autoWarning）は管理者のみ。
+  if (!await canAccessApplication(sessionUser, applicationId)) return forbidden();
+
+  if ((isApproved !== undefined || warning !== undefined || autoWarning !== undefined) && !isAdmin(sessionUser)) {
+    return forbidden();
   }
 
   const updates: Record<string, unknown> = {};
@@ -44,10 +51,7 @@ export async function PATCH(request: NextRequest) {
     .eq("application_id", applicationId)
     .eq("document_key", documentKey);
 
-  if (error) {
-    console.error("[documents PATCH]", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
-  }
+  if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
   return NextResponse.json({ success: true }, { status: 200 });
 }

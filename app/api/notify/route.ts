@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import nodemailer from "nodemailer";
+import { getSessionUser, isAdmin, unauthorized, forbidden } from "@/lib/api-auth";
 
 const FROM_ADDRESS = `DTV Portal <${process.env.GMAIL_USER}>`;
 const BCC_ADDRESSES = "hobby.chameleonclub@gmail.com, saotome14z@gmail.com";
@@ -17,6 +18,10 @@ function createTransporter() {
 }
 
 export async function POST(request: NextRequest) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) return unauthorized();
+  if (!isAdmin(sessionUser)) return forbidden();
+
   let body: {
     to: string;
     applicantName: string;

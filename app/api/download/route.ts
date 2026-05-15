@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin } from "@/lib/supabase";
 import JSZip from "jszip";
+import { getSessionUser, isAdmin, unauthorized, forbidden } from "@/lib/api-auth";
 
 const BUCKET = "documents";
 
@@ -17,6 +18,10 @@ const DOC_LABEL: Record<string, string> = {
 };
 
 export async function POST(request: NextRequest) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) return unauthorized();
+  if (!isAdmin(sessionUser)) return forbidden();
+
   let body: { applicationId: string };
   try {
     body = await request.json();

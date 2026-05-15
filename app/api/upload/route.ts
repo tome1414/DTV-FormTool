@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, DocumentKey } from "@/lib/supabase";
+import { getSessionUser, unauthorized, forbidden, canAccessApplication } from "@/lib/api-auth";
 
 const BUCKET = "documents";
 const MAX_SIZE = 50 * 1024 * 1024; // 50MB
@@ -9,6 +10,9 @@ const ALLOWED_TYPES = [
 ];
 
 export async function POST(request: NextRequest) {
+  const sessionUser = await getSessionUser();
+  if (!sessionUser) return unauthorized();
+
   let formData: FormData;
   try {
     formData = await request.formData();
@@ -27,18 +31,14 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  if (!await canAccessApplication(sessionUser, applicationId)) return forbidden();
+
   if (!ALLOWED_TYPES.includes(file.type)) {
-    return NextResponse.json(
-      { error: `Unsupported file type: ${file.type}` },
-      { status: 415 }
-    );
+    return NextResponse.json({ error: `Unsupported file type: ${file.type}` }, { status: 415 });
   }
 
   if (file.size > MAX_SIZE) {
-    return NextResponse.json(
-      { error: "File size exceeds 50MB limit" },
-      { status: 413 }
-    );
+    return NextResponse.json({ error: "File size exceeds 50MB limit" }, { status: 413 });
   }
 
   const ext = file.name.split(".").pop() ?? "bin";
@@ -46,10 +46,7 @@ export async function POST(request: NextRequest) {
 
   const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
     .from(BUCKET)
-    .upload(storagePath, file, {
-      contentType: file.type,
-      upsert: true,
-    });
+    .upload(storagePath, file, { contentType: file.type, upsert: true });
 
   if (uploadError) {
     console.error("[upload] storage error:", uploadError);
@@ -73,8 +70,6 @@ export async function POST(request: NextRequest) {
     );
 
   if (dbError) {
-    console.error("[upload] db error:", dbError);
-    // ストレージへのアップロードは成功しているのでパスは返す
     return NextResponse.json(
       { path: uploadData.path, warning: "DB record update failed" },
       { status: 207 }
