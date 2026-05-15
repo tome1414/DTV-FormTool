@@ -75,6 +75,7 @@ function DropRow({
     };
     const onDrop = (e: DragEvent) => {
       e.preventDefault();
+      e.stopPropagation();
       counter.current = 0;
       setIsDragOver(false);
       const file = e.dataTransfer?.files?.[0];
@@ -202,6 +203,16 @@ function DocPreviewModal({
 function MyPageContent() {
   const { myApplication, isLoading, updateDocument } = useStore();
   const { t } = useI18n();
+
+  useEffect(() => {
+    const prevent = (e: DragEvent) => e.preventDefault();
+    document.addEventListener("dragover", prevent);
+    document.addEventListener("drop", prevent);
+    return () => {
+      document.removeEventListener("dragover", prevent);
+      document.removeEventListener("drop", prevent);
+    };
+  }, []);
   const [previewDoc, setPreviewDoc] = useState<DocumentKey | null>(null);
   const [uploading, setUploading] = useState<Partial<Record<DocumentKey, boolean>>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
