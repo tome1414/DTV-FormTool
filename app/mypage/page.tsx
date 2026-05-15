@@ -139,6 +139,7 @@ function MyPageContent() {
   const [previewDoc, setPreviewDoc] = useState<DocumentKey | null>(null);
   const [uploading, setUploading] = useState<Partial<Record<DocumentKey, boolean>>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [dragOver, setDragOver] = useState<Partial<Record<DocumentKey, boolean>>>({});
   const fileRefs = useRef<Partial<Record<DocumentKey, HTMLInputElement | null>>>({});
 
   const handleUpload = async (key: DocumentKey, file: File) => {
@@ -277,10 +278,24 @@ function MyPageContent() {
           {DOC_KEYS.map(({ key, required }) => {
             const uploaded = applicant.documents[key];
             const isUploading = uploading[key];
+            const isDragOver = dragOver[key];
             return (
               <div
                 key={key}
-                className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0"
+                className={`flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0 rounded-lg px-1 transition-colors ${
+                  isDragOver ? "bg-blue-50 border border-blue-300 border-dashed" : ""
+                }`}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  setDragOver((p) => ({ ...p, [key]: true }));
+                }}
+                onDragLeave={() => setDragOver((p) => ({ ...p, [key]: false }))}
+                onDrop={(e) => {
+                  e.preventDefault();
+                  setDragOver((p) => ({ ...p, [key]: false }));
+                  const file = e.dataTransfer.files?.[0];
+                  if (file) handleUpload(key, file);
+                }}
               >
                 <div className="flex items-center gap-3">
                   {isUploading ? (
@@ -295,6 +310,9 @@ function MyPageContent() {
                     <span className="text-xs bg-red-100 text-red-500 px-1.5 py-0.5 rounded flex-shrink-0">
                       {t("common.required")}
                     </span>
+                  )}
+                  {isDragOver && (
+                    <span className="text-xs text-blue-500 font-medium">ここにドロップ</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
