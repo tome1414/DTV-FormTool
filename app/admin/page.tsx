@@ -596,6 +596,16 @@ function DetailPanel({
   const [previewDoc, setPreviewDoc] = useState<{ key: DocumentKey; label: string } | null>(null);
   const [notifying, setNotifying] = useState(false);
 
+  useEffect(() => {
+    const prevent = (e: DragEvent) => e.preventDefault();
+    document.addEventListener("dragover", prevent);
+    document.addEventListener("drop", prevent);
+    return () => {
+      document.removeEventListener("dragover", prevent);
+      document.removeEventListener("drop", prevent);
+    };
+  }, []);
+
   const handleNotify = async () => {
     setNotifying(true);
     try {
@@ -906,7 +916,15 @@ function DetailPanel({
                   </div>
 
                   {uploaded ? (
-                    <div className="flex items-center gap-2 mt-1">
+                    <div
+                      className="flex items-center gap-2 mt-1"
+                      onDragOver={(e) => e.preventDefault()}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        const file = e.dataTransfer.files[0];
+                        if (file) handleAdminFile(key, file);
+                      }}
+                    >
                       <div className="flex items-center gap-2 flex-1 bg-gray-50 rounded-lg px-2.5 py-1.5 min-w-0 border border-gray-100">
                         <CheckCircle2 size={14} className="text-green-500 flex-shrink-0" />
                         <span className="text-xs text-gray-600 truncate">{uploaded.name}</span>
