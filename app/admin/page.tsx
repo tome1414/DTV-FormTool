@@ -86,6 +86,35 @@ function DownloadSection({
   const userReady = USER_DOC_KEYS.every((k) => applicant.documents[k]);
   const adminReady = ADMIN_DOC_KEYS.every((k) => applicant.documents[k]);
   const canDownload = userReady && adminReady;
+  const [downloading, setDownloading] = useState(false);
+  const [downloadError, setDownloadError] = useState<string | null>(null);
+
+  const handleDownload = async () => {
+    setDownloading(true);
+    setDownloadError(null);
+    try {
+      const res = await fetch("/api/download", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ applicationId: applicant.id }),
+      });
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${applicant.applicationNumber}_documents.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch (err) {
+      setDownloadError(err instanceof Error ? err.message : "ダウンロード失敗");
+    } finally {
+      setDownloading(false);
+    }
+  };
 
   return (
     <div className="rounded-lg border border-gray-200 overflow-hidden">
@@ -109,15 +138,22 @@ function DownloadSection({
             {adminReady && ` — OK`}
           </span>
         </div>
+        {downloadError && (
+          <p className="text-xs text-red-500 pt-0.5">{downloadError}</p>
+        )}
       </div>
       <button
-        disabled={!canDownload}
-        className={`w-full text-sm py-2 transition-colors font-medium ${
+        onClick={canDownload ? handleDownload : undefined}
+        disabled={!canDownload || downloading}
+        className={`w-full text-sm py-2 transition-colors font-medium flex items-center justify-center gap-2 ${
           canDownload
-            ? "bg-blue-600 hover:bg-blue-700 text-white"
+            ? "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white"
             : "bg-gray-100 text-gray-400 cursor-not-allowed"
         }`}
       >
+        {downloading && (
+          <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+        )}
         {canDownload ? t("admin.download_ready") : t("admin.download_pdf")}
       </button>
     </div>
