@@ -285,13 +285,25 @@ function MyPageContent() {
                 className={`flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0 rounded-lg px-1 transition-colors ${
                   isDragOver ? "bg-blue-50 border border-blue-300 border-dashed" : ""
                 }`}
-                onDragOver={(e) => {
+                onDragEnter={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   setDragOver((p) => ({ ...p, [key]: true }));
                 }}
-                onDragLeave={() => setDragOver((p) => ({ ...p, [key]: false }))}
+                onDragOver={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+                onDragLeave={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
+                    setDragOver((p) => ({ ...p, [key]: false }));
+                  }
+                }}
                 onDrop={(e) => {
                   e.preventDefault();
+                  e.stopPropagation();
                   setDragOver((p) => ({ ...p, [key]: false }));
                   const file = e.dataTransfer.files?.[0];
                   if (file) handleUpload(key, file);
