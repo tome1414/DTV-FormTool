@@ -97,7 +97,7 @@ function ApplyContent() {
       const json = await res.json();
       if (res.ok) {
         setUploads((prev) => prev[key] ? { ...prev, [key]: { ...prev[key]!, storagePath: json.path } } : prev);
-        updateDocument(myApplication.id, key as import("@/lib/store").DocumentKey, true);
+        updateDocument(myApplication.id, key as import("@/lib/store").DocumentKey, true, json.path);
       } else {
         setUploadError(`アップロードエラー: ${json.error ?? res.status}`);
       }

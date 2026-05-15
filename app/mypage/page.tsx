@@ -163,7 +163,7 @@ function MyPageContent() {
       const res = await fetch("/api/upload", { method: "POST", body: formData });
       const json = await res.json();
       if (res.ok) {
-        updateDocument(myApplication.id, key, true);
+        updateDocument(myApplication.id, key, true, json.path);
       } else {
         setUploadError(`アップロードエラー: ${json.error ?? res.status}`);
       }

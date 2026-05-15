@@ -55,7 +55,7 @@ interface StoreContextType {
   error: string | null;
   refresh: () => void;
   updateStatus: (id: string, status: ApplicationStatus) => void;
-  updateDocument: (id: string, key: DocumentKey, value: boolean) => void;
+  updateDocument: (id: string, key: DocumentKey, value: boolean, storagePath?: string) => void;
   updateDocumentWarning: (id: string, key: DocumentKey, warning: string | null) => void;
   approveDocument: (id: string, key: DocumentKey) => void;
   unapproveDocument: (id: string, key: DocumentKey) => void;
@@ -192,11 +192,15 @@ export function StoreProvider({ children }: { children: React.ReactNode }) {
   // ── 書類アップロード状態 ──────────────────────────────────────
 
   const updateDocument = useCallback(
-    (id: string, key: DocumentKey, value: boolean) => {
+    (id: string, key: DocumentKey, value: boolean, storagePath?: string) => {
       setApplicants((prev) =>
-        prev.map((a) =>
-          a.id === id ? { ...a, documents: { ...a.documents, [key]: value } } : a
-        )
+        prev.map((a) => {
+          if (a.id !== id) return a;
+          const documentPaths = { ...(a.documentPaths ?? {}) };
+          if (storagePath) documentPaths[key] = storagePath;
+          else delete documentPaths[key];
+          return { ...a, documents: { ...a.documents, [key]: value }, documentPaths };
+        })
       );
       patchDoc(id, key, { isUploaded: value });
     },
