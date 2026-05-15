@@ -44,6 +44,72 @@ const DOC_KEYS: Array<{ key: DocumentKey; required: boolean }> = [
 ];
 
 
+function DropRow({
+  onFileDrop,
+  children,
+  className,
+}: {
+  onFileDrop: (file: File) => void;
+  children: React.ReactNode;
+  className?: string;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const counter = useRef(0);
+  const [isDragOver, setIsDragOver] = useState(false);
+  const onFileDropRef = useRef(onFileDrop);
+  useEffect(() => { onFileDropRef.current = onFileDrop; });
+
+  useEffect(() => {
+    const el = ref.current;
+    if (!el) return;
+
+    const onDragEnter = (e: DragEvent) => {
+      e.preventDefault();
+      counter.current++;
+      setIsDragOver(true);
+    };
+    const onDragOver = (e: DragEvent) => { e.preventDefault(); };
+    const onDragLeave = () => {
+      counter.current--;
+      if (counter.current === 0) setIsDragOver(false);
+    };
+    const onDrop = (e: DragEvent) => {
+      e.preventDefault();
+      counter.current = 0;
+      setIsDragOver(false);
+      const file = e.dataTransfer?.files?.[0];
+      if (file) onFileDropRef.current(file);
+    };
+
+    el.addEventListener("dragenter", onDragEnter);
+    el.addEventListener("dragover", onDragOver);
+    el.addEventListener("dragleave", onDragLeave);
+    el.addEventListener("drop", onDrop);
+    return () => {
+      el.removeEventListener("dragenter", onDragEnter);
+      el.removeEventListener("dragover", onDragOver);
+      el.removeEventListener("dragleave", onDragLeave);
+      el.removeEventListener("drop", onDrop);
+    };
+  }, []);
+
+  return (
+    <div
+      ref={ref}
+      className={`${className ?? ""} transition-colors ${
+        isDragOver ? "bg-blue-50 outline outline-2 outline-blue-300 outline-dashed rounded-lg" : ""
+      }`}
+    >
+      {isDragOver && (
+        <span className="absolute text-xs text-blue-500 font-medium pointer-events-none" style={{ right: 8, top: "50%", transform: "translateY(-50%)" }}>
+          ドロップ
+        </span>
+      )}
+      {children}
+    </div>
+  );
+}
+
 function DocPreviewModal({
   docKey,
   storagePath,
@@ -139,7 +205,6 @@ function MyPageContent() {
   const [previewDoc, setPreviewDoc] = useState<DocumentKey | null>(null);
   const [uploading, setUploading] = useState<Partial<Record<DocumentKey, boolean>>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [dragOver, setDragOver] = useState<Partial<Record<DocumentKey, boolean>>>({});
   const fileRefs = useRef<Partial<Record<DocumentKey, HTMLInputElement | null>>>({});
 
   const handleUpload = async (key: DocumentKey, file: File) => {
@@ -278,36 +343,11 @@ function MyPageContent() {
           {DOC_KEYS.map(({ key, required }) => {
             const uploaded = applicant.documents[key];
             const isUploading = uploading[key];
-            const isDragOver = dragOver[key];
             return (
-              <div
+              <DropRow
                 key={key}
-                className={`flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0 rounded-lg px-1 transition-colors ${
-                  isDragOver ? "bg-blue-50 border border-blue-300 border-dashed" : ""
-                }`}
-                onDragEnter={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setDragOver((p) => ({ ...p, [key]: true }));
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                }}
-                onDragLeave={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  if (!e.currentTarget.contains(e.relatedTarget as Node)) {
-                    setDragOver((p) => ({ ...p, [key]: false }));
-                  }
-                }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.stopPropagation();
-                  setDragOver((p) => ({ ...p, [key]: false }));
-                  const file = e.dataTransfer.files?.[0];
-                  if (file) handleUpload(key, file);
-                }}
+                className="relative flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0 px-1"
+                onFileDrop={(file) => handleUpload(key, file)}
               >
                 <div className="flex items-center gap-3">
                   {isUploading ? (
@@ -322,9 +362,6 @@ function MyPageContent() {
                     <span className="text-xs bg-red-100 text-red-500 px-1.5 py-0.5 rounded flex-shrink-0">
                       {t("common.required")}
                     </span>
-                  )}
-                  {isDragOver && (
-                    <span className="text-xs text-blue-500 font-medium">ここにドロップ</span>
                   )}
                 </div>
                 <div className="flex items-center gap-1.5 flex-shrink-0">
@@ -367,7 +404,7 @@ function MyPageContent() {
                     }}
                   />
                 </div>
-              </div>
+              </DropRow>
             );
           })}
         </div>
