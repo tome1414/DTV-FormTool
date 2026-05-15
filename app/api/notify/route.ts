@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from "next/server";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
-const resend = new Resend(process.env.RESEND_API_KEY);
+const FROM_ADDRESS = `DTV Portal <${process.env.GMAIL_USER}>`;
+const BCC_ADDRESSES = "hobby.chameleonclub@gmail.com, saotome14z@gmail.com";
 
-const FROM_ADDRESS = "DTV Portal <noreply@dtv-portal.com>";
+function createTransporter() {
+  return nodemailer.createTransport({
+    service: "gmail",
+    auth: {
+      user: process.env.GMAIL_USER,
+      pass: process.env.GMAIL_APP_PASSWORD,
+    },
+  });
+}
 
 export async function POST(request: NextRequest) {
   let body: {
@@ -91,17 +100,20 @@ export async function POST(request: NextRequest) {
 </body>
 </html>`;
 
-  const { data, error } = await resend.emails.send({
-    from: FROM_ADDRESS,
-    to: [to],
-    subject: `【DTV申請】書類不足のお知らせ - ${applicationNumber}`,
-    html,
-  });
-
-  if (error) {
-    console.error("[notify] resend error:", error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+  try {
+    const transporter = createTransporter();
+    await transporter.sendMail({
+      from: FROM_ADDRESS,
+      to,
+      bcc: BCC_ADDRESSES,
+      subject: `【DTV申請】書類不足のお知らせ - ${applicationNumber}`,
+      html,
+    });
+  } catch (err) {
+    console.error("[notify] gmail error:", err);
+    const message = err instanceof Error ? err.message : "送信失敗";
+    return NextResponse.json({ error: message }, { status: 500 });
   }
 
-  return NextResponse.json({ id: data?.id }, { status: 200 });
+  return NextResponse.json({ success: true }, { status: 200 });
 }
