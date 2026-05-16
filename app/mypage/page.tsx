@@ -53,6 +53,7 @@ function DropRow({
   children: React.ReactNode;
   className?: string;
 }) {
+  const { t } = useI18n();
   const ref = useRef<HTMLDivElement>(null);
   const counter = useRef(0);
   const [isDragOver, setIsDragOver] = useState(false);
@@ -103,7 +104,7 @@ function DropRow({
     >
       {isDragOver && (
         <span className="absolute text-xs text-blue-500 font-medium pointer-events-none" style={{ right: 8, top: "50%", transform: "translateY(-50%)" }}>
-          ドロップ
+          {t("common.drop_here")}
         </span>
       )}
       {children}
@@ -182,7 +183,7 @@ function DocPreviewModal({
             />
           ) : (
             <div className="flex items-center justify-center min-h-48 text-gray-400 text-sm">
-              プレビューを読み込めませんでした
+              {t("common.preview_error")}
             </div>
           )}
         </div>
@@ -244,7 +245,7 @@ function MyPageContent() {
   if (isLoading) {
     return (
       <div className="flex items-center justify-center min-h-[40vh]">
-        <div className="text-gray-400 text-sm">読み込み中...</div>
+        <div className="text-gray-400 text-sm">{t("common.loading")}</div>
       </div>
     );
   }

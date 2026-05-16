@@ -110,7 +110,7 @@ function DownloadSection({
       a.click();
       URL.revokeObjectURL(url);
     } catch (err) {
-      setDownloadError(err instanceof Error ? err.message : "ダウンロード失敗");
+      setDownloadError(err instanceof Error ? err.message : t("admin.download_failed"));
     } finally {
       setDownloading(false);
     }
@@ -259,6 +259,7 @@ function FunnelStep({
 
 function DashboardView() {
   const { applicants } = useStore();
+  const { t } = useI18n();
 
   const total = applicants.length;
   const submittedCount = applicants.filter(a => ["大使館提出済み", "大使館修正依頼", "DTV承認"].includes(a.status)).length;
@@ -267,7 +268,7 @@ function DashboardView() {
   const approvalRate = total > 0 ? Math.round((approvedCount / total) * 100) : 0;
 
   const statusCounts = (Object.keys(STATUS_HEX) as ApplicationStatus[]).map(s => ({
-    label: s, value: applicants.filter(a => a.status === s).length,
+    label: t(STATUS_I18N[s]), value: applicants.filter(a => a.status === s).length,
     hex: STATUS_HEX[s], tw: STATUS_TW[s],
   }));
 
@@ -297,48 +298,48 @@ function DashboardView() {
   return (
     <div className="space-y-6 pb-6">
       <div>
-        <h1 className="text-2xl font-bold text-gray-800 mb-1">ダッシュボード</h1>
-        <p className="text-gray-500 text-sm">申請状況の分析・統計</p>
+        <h1 className="text-2xl font-bold text-gray-800 mb-1">{t("admin.dashboard_title")}</h1>
+        <p className="text-gray-500 text-sm">{t("admin.dashboard_subtitle")}</p>
       </div>
 
       {/* Approval funnel */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
         <div className="flex items-center justify-between mb-4">
-          <p className="text-sm font-semibold text-gray-700">申請〜承認フロー</p>
+          <p className="text-sm font-semibold text-gray-700">{t("admin.flow_title")}</p>
           <div className="flex items-center gap-2 bg-emerald-50 border border-emerald-200 rounded-lg px-3 py-1.5">
             <span className="text-emerald-600 font-bold text-lg">{approvalRate}%</span>
-            <span className="text-xs text-emerald-700">DTV承認率</span>
+            <span className="text-xs text-emerald-700">{t("admin.approval_rate")}</span>
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <FunnelStep label="総申請数" value={total} total={total} colorHex="#60A5FA" colorBg="bg-blue-50" />
-          <FunnelStep label="大使館提出" value={submittedCount} total={total} colorHex="#A78BFA" colorBg="bg-purple-50" />
+          <FunnelStep label={t("admin.total_label")} value={total} total={total} colorHex="#60A5FA" colorBg="bg-blue-50" />
+          <FunnelStep label={t("admin.embassy_submitted_label")} value={submittedCount} total={total} colorHex="#A78BFA" colorBg="bg-purple-50" />
           <div className="flex flex-col gap-1.5 flex-1">
             <div className="flex items-center gap-2">
               <span className="text-gray-300 text-sm flex-shrink-0">┬→</span>
               <div className="flex-1 rounded-xl border-2 border-orange-300 bg-orange-50 p-2 text-center">
                 <p className="text-lg font-bold text-orange-500">{revisionCount}</p>
-                <p className="text-[10px] text-gray-600 leading-tight">大使館修正依頼</p>
+                <p className="text-[10px] text-gray-600 leading-tight">{t("admin.embassy_revision_stat")}</p>
               </div>
             </div>
             <div className="flex items-center gap-2">
               <span className="text-gray-300 text-sm flex-shrink-0">└→</span>
               <div className="flex-1 rounded-xl border-2 border-emerald-400 bg-emerald-50 p-2 text-center">
                 <p className="text-lg font-bold text-emerald-600">{approvedCount}</p>
-                <p className="text-[10px] text-gray-600 leading-tight">DTV承認済み</p>
+                <p className="text-[10px] text-gray-600 leading-tight">{t("admin.dtv_approved_stat")}</p>
               </div>
             </div>
           </div>
         </div>
         <p className="text-xs text-gray-400 mt-3">
-          ※ 大使館修正依頼 → 修正対応 → DTV承認　または　大使館提出 → DTV承認（直接）の2フローあり
+          ※ {t("admin.flow_note")}
         </p>
       </div>
 
       <div className="grid grid-cols-2 gap-6">
         {/* Status donut */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-700 mb-4">ステータス別内訳</p>
+          <p className="text-sm font-semibold text-gray-700 mb-4">{t("admin.status_breakdown")}</p>
           <div className="flex items-center gap-4">
             <DonutChart segments={statusCounts} />
             <div className="space-y-1.5 flex-1">
@@ -355,7 +356,7 @@ function DashboardView() {
 
         {/* Monthly trend */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-700 mb-1">月別申請数（直近6ヶ月）</p>
+          <p className="text-sm font-semibold text-gray-700 mb-1">{t("admin.monthly_trend")}</p>
           <VBarChart data={monthlyData} />
         </div>
       </div>
@@ -363,7 +364,7 @@ function DashboardView() {
       <div className="grid grid-cols-2 gap-6">
         {/* Nationality distribution */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-700 mb-4">国籍別申請数</p>
+          <p className="text-sm font-semibold text-gray-700 mb-4">{t("admin.nationality_stats")}</p>
           {natData.length > 0 ? (
             <div className="space-y-2">
               {natData.map(([nat, count], i) => (
@@ -371,13 +372,13 @@ function DashboardView() {
               ))}
             </div>
           ) : (
-            <p className="text-xs text-gray-400">国籍データなし</p>
+            <p className="text-xs text-gray-400">{t("admin.no_nationality_data")}</p>
           )}
         </div>
 
         {/* Document completion */}
         <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5">
-          <p className="text-sm font-semibold text-gray-700 mb-4">書類提出率</p>
+          <p className="text-sm font-semibold text-gray-700 mb-4">{t("admin.doc_completion")}</p>
           <div className="space-y-3">
             {docKeys.map(key => {
               const submitted = applicants.filter(a => a.documents[key]).length;
@@ -625,10 +626,10 @@ function DetailPanel({
       if (res.ok) {
         setToast(t("admin.notify_sent"));
       } else {
-        setToast(`送信エラー: ${json.error ?? res.status}`);
+        setToast(`${t("admin.save_notify_error")}: ${json.error ?? res.status}`);
       }
     } catch {
-      setToast("送信エラー: ネットワーク障害");
+      setToast(`${t("admin.save_notify_error")}: ${t("admin.network_error")}`);
     } finally {
       setNotifying(false);
       setTimeout(() => setToast(null), 4000);
@@ -657,9 +658,9 @@ function DetailPanel({
           }),
         });
         const json = await res.json();
-        setToast(res.ok ? "ステータスを保存し、通知メールを送信しました" : `保存完了。メール送信エラー: ${json.error ?? res.status}`);
+        setToast(res.ok ? t("admin.save_notify_success") : `${t("admin.save_notify_error")}: ${json.error ?? res.status}`);
       } catch {
-        setToast("保存完了。メール送信エラー: ネットワーク障害");
+        setToast(`${t("admin.save_notify_error")}: ${t("admin.network_error")}`);
       }
     } else {
       setToast(t("admin.toast", { name: applicant.name, status: t(STATUS_I18N[selectedStatus]) }));
@@ -714,12 +715,12 @@ function DetailPanel({
           {(applicant.nationality || applicant.consulateId) && (
             <div className="mt-2 bg-gray-50 rounded-lg px-3 py-2 space-y-0.5">
               {applicant.nationality && (
-                <p className="text-xs text-gray-500">国籍：<span className="text-gray-700 font-medium">{applicant.nationality}</span></p>
+                <p className="text-xs text-gray-500">{t("admin.nationality_label")}：<span className="text-gray-700 font-medium">{applicant.nationality}</span></p>
               )}
               {applicant.consulateId && (() => {
                 const c = findConsulateById(applicant.consulateId!);
                 return c ? (
-                  <p className="text-xs text-gray-500">申請先：<span className="text-gray-700 font-medium">{c.name_ja}</span></p>
+                  <p className="text-xs text-gray-500">{t("admin.consulate_label")}：<span className="text-gray-700 font-medium">{c.name_ja}</span></p>
                 ) : null;
               })()}
             </div>
@@ -780,13 +781,13 @@ function DetailPanel({
                     <span className="text-sm text-gray-700 flex-1">{t(i18nKey)}</span>
                     {/* Pending label */}
                     {uploaded && !approved && !warning && (
-                      <span className="text-xs text-yellow-600 font-medium flex-shrink-0">未確認</span>
+                      <span className="text-xs text-yellow-600 font-medium flex-shrink-0">{t("admin.unconfirmed")}</span>
                     )}
                     {/* Preview button */}
                     {uploaded && (
                       <button
                         onClick={() => setPreviewDoc({ key, label: t(i18nKey) })}
-                        title="プレビュー"
+                        title={t("common.preview")}
                         className="w-6 h-6 flex items-center justify-center rounded transition-colors text-gray-300 hover:text-blue-500 flex-shrink-0"
                       >
                         <Eye size={13} />
@@ -800,7 +801,7 @@ function DetailPanel({
                             ? unapproveDocument(applicant.id, key)
                             : approveDocument(applicant.id, key)
                         }
-                        title={approved ? "承認を取り消す" : "承認する"}
+                        title={approved ? t("admin.unapprove") : t("admin.approve")}
                         className={`w-6 h-6 flex items-center justify-center rounded transition-colors flex-shrink-0 ${
                           approved
                             ? "text-green-500 hover:text-gray-400"
@@ -821,7 +822,7 @@ function DetailPanel({
                             setWarningDraft(warning ?? "");
                           }
                         }}
-                        title={warning ? "警告メモを編集" : "警告メモを追加"}
+                        title={warning ? t("admin.warning_edit") : t("admin.warning_add")}
                         className={`w-6 h-6 flex items-center justify-center rounded transition-colors flex-shrink-0 ${
                           warning
                             ? "text-yellow-500 hover:text-yellow-600"
@@ -835,7 +836,7 @@ function DetailPanel({
                     {warning && !isEditing && (
                       <button
                         onClick={() => updateDocumentWarning(applicant.id, key, null)}
-                        title="警告を削除"
+                        title={t("admin.warning_remove")}
                         className="w-6 h-6 flex items-center justify-center rounded text-gray-300 hover:text-red-400 transition-colors flex-shrink-0"
                       >
                         <X size={12} />
@@ -864,7 +865,7 @@ function DetailPanel({
                       <textarea
                         className="w-full text-xs border border-yellow-300 rounded-lg px-2.5 py-1.5 resize-none focus:outline-none focus:border-yellow-500 bg-yellow-50"
                         rows={2}
-                        placeholder="警告・注意メモを入力..."
+                        placeholder={t("admin.warning_placeholder")}
                         value={warningDraft}
                         onChange={(e) => setWarningDraft(e.target.value)}
                       />
@@ -882,7 +883,7 @@ function DetailPanel({
                           onClick={() => setEditingWarning(null)}
                           className="text-xs px-2.5 py-1 border border-gray-300 text-gray-500 rounded-md hover:bg-gray-50 transition-colors"
                         >
-                          キャンセル
+                          {t("common.cancel")}
                         </button>
                       </div>
                     </div>
@@ -897,7 +898,7 @@ function DetailPanel({
         {applicant.statusHistory?.length > 0 && (
           <div>
             <p className="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-3">
-              ステータス履歴
+              {t("admin.status_history")}
             </p>
             <div className="relative pl-5 space-y-3">
               <div className="absolute left-[7px] top-1 bottom-1 w-0.5 bg-gray-100" />
@@ -908,7 +909,7 @@ function DetailPanel({
                   }`} />
                   <div>
                     <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-medium ${STATUS_STYLES[entry.status]}`}>
-                      {entry.status}
+                      {t(STATUS_I18N[entry.status])}
                     </span>
                     <p className="text-xs text-gray-400 mt-0.5">{entry.timestamp}</p>
                   </div>
@@ -941,7 +942,7 @@ function DetailPanel({
                       </span>
                     ) : (
                       <span className="text-xs bg-gray-100 text-gray-400 px-2 py-0.5 rounded-full">
-                        未アップロード
+                        {t("admin.not_uploaded")}
                       </span>
                     )}
                   </div>
@@ -974,7 +975,7 @@ function DetailPanel({
                       </button>
                       <button
                         onClick={() => handleAdminRemove(key)}
-                        title="削除"
+                        title={t("common.delete")}
                         className="w-8 h-8 flex items-center justify-center rounded-lg border border-red-100 text-red-400 hover:bg-red-50 transition-colors flex-shrink-0"
                       >
                         <Trash2 size={13} />
@@ -1035,10 +1036,9 @@ function DetailPanel({
         <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
           <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
             <div className="px-6 py-5 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800 text-base">ステータスを保存しますか？</h3>
+              <h3 className="font-bold text-gray-800 text-base">{t("admin.confirm_save_title")}</h3>
               <p className="text-sm text-gray-500 mt-1">
-                <span className="font-medium text-gray-700">{applicant.name}</span> さんの
-                ステータスを <span className="font-semibold text-blue-600">{t(STATUS_I18N[selectedStatus])}</span> に変更します。
+                {t("admin.confirm_save_desc", { name: applicant.name, status: t(STATUS_I18N[selectedStatus]) })}
               </p>
             </div>
             <div className="px-6 py-4 space-y-2">
@@ -1046,19 +1046,19 @@ function DetailPanel({
                 onClick={() => handleConfirmSave(true)}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
               >
-                <span>📧</span> 通知メールを送って保存
+                <span>📧</span> {t("admin.save_with_notify")}
               </button>
               <button
                 onClick={() => handleConfirmSave(false)}
                 className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm py-2.5 rounded-lg font-medium transition-colors"
               >
-                通知なしで保存
+                {t("admin.save_without_notify")}
               </button>
               <button
                 onClick={() => setConfirmSave(false)}
                 className="w-full text-gray-400 hover:text-gray-600 text-sm py-1.5 transition-colors"
               >
-                キャンセル
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -1111,8 +1111,8 @@ function AdminContent() {
 
   const TABS: { id: AdminTab; label: string; icon: React.ReactNode }[] = [
     { id: "applications", label: t("admin.title"), icon: <Users size={14} /> },
-    { id: "dashboard",    label: "ダッシュボード",  icon: <LayoutDashboard size={14} /> },
-    { id: "settings",     label: "権限設定",        icon: <Settings size={14} /> },
+    { id: "dashboard",    label: t("admin.tab_dashboard"),  icon: <LayoutDashboard size={14} /> },
+    { id: "settings",     label: t("admin.tab_settings"),   icon: <Settings size={14} /> },
   ];
 
   return (
