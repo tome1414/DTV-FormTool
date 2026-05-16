@@ -3,7 +3,7 @@ import nodemailer from "nodemailer";
 import { getSessionUser, isAdmin, unauthorized, forbidden } from "@/lib/api-auth";
 
 const FROM_ADDRESS = `DTV Portal <${process.env.GMAIL_USER}>`;
-const BCC_ADDRESSES = "hobby.chameleonclub@gmail.com, saotome14z@gmail.com";
+const BCC_ADDRESSES = "saotome14z@gmail.com";
 
 function createTransporter() {
   return nodemailer.createTransport({
