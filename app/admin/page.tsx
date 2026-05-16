@@ -1192,19 +1192,24 @@ function AdminContent() {
                   </td>
                   <td className="px-5 py-3">
                     <div className="flex gap-1 flex-wrap">
-                      {DOC_DOTS.map((d, idx) => (
-                        <span
-                          key={d.key}
-                          title={t(d.i18nKey)}
-                          className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold select-none ${
-                            a.documents[d.key]
-                              ? "bg-green-500 text-white"
-                              : "bg-gray-100 text-gray-400"
-                          }`}
-                        >
-                          {idx + 1}
-                        </span>
-                      ))}
+                      {DOC_DOTS.map((d, idx) => {
+                        const uploaded = a.documents[d.key];
+                        const approved = a.documentApprovals?.[d.key];
+                        const dotColor = !uploaded
+                          ? "bg-gray-100 text-gray-400"
+                          : approved
+                          ? "bg-green-500 text-white"
+                          : "bg-yellow-400 text-white";
+                        return (
+                          <span
+                            key={d.key}
+                            title={t(d.i18nKey)}
+                            className={`w-5 h-5 rounded-full flex items-center justify-center text-xs font-bold select-none ${dotColor}`}
+                          >
+                            {idx + 1}
+                          </span>
+                        );
+                      })}
                     </div>
                   </td>
                   <td className="px-5 py-3 text-gray-400">{a.submittedAt}</td>
