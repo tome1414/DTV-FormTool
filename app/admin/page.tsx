@@ -595,6 +595,8 @@ function DetailPanel({
   const [warningDraft, setWarningDraft] = useState("");
   const [previewDoc, setPreviewDoc] = useState<{ key: DocumentKey; label: string } | null>(null);
   const [notifying, setNotifying] = useState(false);
+  const [confirmSave, setConfirmSave] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   useEffect(() => {
     const prevent = (e: DragEvent) => e.preventDefault();
@@ -634,9 +636,36 @@ function DetailPanel({
   };
 
   const handleSave = () => {
+    setConfirmSave(true);
+  };
+
+  const handleConfirmSave = async (sendNotification: boolean) => {
+    setConfirmSave(false);
+    setSaving(true);
     updateStatus(applicant.id, selectedStatus);
-    setToast(t("admin.toast", { name: applicant.name, status: t(STATUS_I18N[selectedStatus]) }));
-    setTimeout(() => setToast(null), 3000);
+    if (sendNotification) {
+      try {
+        const res = await fetch("/api/notify-status", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            to: applicant.email,
+            applicantName: applicant.name,
+            applicationNumber: applicant.applicationNumber,
+            newStatus: selectedStatus,
+            notes: applicant.notes,
+          }),
+        });
+        const json = await res.json();
+        setToast(res.ok ? "ステータスを保存し、通知メールを送信しました" : `保存完了。メール送信エラー: ${json.error ?? res.status}`);
+      } catch {
+        setToast("保存完了。メール送信エラー: ネットワーク障害");
+      }
+    } else {
+      setToast(t("admin.toast", { name: applicant.name, status: t(STATUS_I18N[selectedStatus]) }));
+    }
+    setSaving(false);
+    setTimeout(() => setToast(null), 4000);
   };
 
   const handleAdminFile = async (key: DocumentKey, file: File) => {
@@ -713,8 +742,10 @@ function DetailPanel({
           </select>
           <button
             onClick={handleSave}
-            className="mt-2 w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2 rounded-lg transition-colors font-medium"
+            disabled={saving}
+            className="mt-2 w-full bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white text-sm py-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2"
           >
+            {saving && <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
             {t("common.save")}
           </button>
         </div>
@@ -998,6 +1029,41 @@ function DetailPanel({
       </div>
 
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
+
+      {/* ── ステータス保存確認モーダル ── */}
+      {confirmSave && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
+          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
+            <div className="px-6 py-5 border-b border-gray-100">
+              <h3 className="font-bold text-gray-800 text-base">ステータスを保存しますか？</h3>
+              <p className="text-sm text-gray-500 mt-1">
+                <span className="font-medium text-gray-700">{applicant.name}</span> さんの
+                ステータスを <span className="font-semibold text-blue-600">{t(STATUS_I18N[selectedStatus])}</span> に変更します。
+              </p>
+            </div>
+            <div className="px-6 py-4 space-y-2">
+              <button
+                onClick={() => handleConfirmSave(true)}
+                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+              >
+                <span>📧</span> 通知メールを送って保存
+              </button>
+              <button
+                onClick={() => handleConfirmSave(false)}
+                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm py-2.5 rounded-lg font-medium transition-colors"
+              >
+                通知なしで保存
+              </button>
+              <button
+                onClick={() => setConfirmSave(false)}
+                className="w-full text-gray-400 hover:text-gray-600 text-sm py-1.5 transition-colors"
+              >
+                キャンセル
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {previewDoc && (
         <PreviewModal
