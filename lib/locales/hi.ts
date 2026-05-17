@@ -81,6 +81,10 @@ const hi = {
       ready: "तैयार",
       embassy: "दूतावास",
     },
+    bundle_title: "PDF डाउनलोड",
+    bundle_desc: "स्वीकृति पत्र + चालान + मौजूदा PDF एक साथ",
+    bundle_download: "PDF डाउनलोड करें",
+    bundle_generating: "बना रहे हैं...",
   },
   admin: {
     title: "व्यवस्थापक डैशबोर्ड",
@@ -150,6 +154,14 @@ const hi = {
     doc_completion: "दस्तावेज़ जमा दर",
     tab_dashboard: "डैशबोर्ड",
     tab_settings: "अनुमति सेटिंग",
+    crop_passport: "Crop Passport",
+    crop_title: "Crop Passport Image",
+    crop_desc: "Drag to select the area to keep, then click Apply.",
+    crop_apply: "Apply Crop",
+    crop_saving: "Saving...",
+    bundle_download: "Download Bundle PDF",
+    bundle_generating: "Generating...",
+    bundle_not_ready: "Upload all 3 files to enable",
   },
   login: {
     title: "लॉग इन",
@@ -190,3 +202,5 @@ const hi = {
 };
 
 export default hi;
+
+

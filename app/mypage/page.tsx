@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Eye, RefreshCw, CheckCircle2, MinusCircle, Upload } from "lucide-react";
+import { Eye, RefreshCw, CheckCircle2, MinusCircle, Upload, Download } from "lucide-react";
 import { useStore, ApplicationStatus, DocumentKey } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
@@ -214,7 +214,32 @@ function MyPageContent() {
   const [previewDoc, setPreviewDoc] = useState<DocumentKey | null>(null);
   const [uploading, setUploading] = useState<Partial<Record<DocumentKey, boolean>>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
+  const [bundleDownloading, setBundleDownloading] = useState(false);
   const fileRefs = useRef<Partial<Record<DocumentKey, HTMLInputElement | null>>>({});
+
+  const handleBundleDownload = async () => {
+    if (!myApplication || bundleDownloading) return;
+    setBundleDownloading(true);
+    try {
+      const res = await fetch(`/api/applications/${myApplication.id}/bundle`);
+      if (!res.ok) {
+        const { error } = await res.json().catch(() => ({}));
+        alert(error ?? "Download failed");
+        return;
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bundle_${myApplication.applicationNumber}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      alert("Download failed");
+    } finally {
+      setBundleDownloading(false);
+    }
+  };
 
   const handleUpload = async (key: DocumentKey, file: File) => {
     if (!myApplication) return;
@@ -430,6 +455,34 @@ function MyPageContent() {
           })}
         </div>
       </div>
+
+      {/* Bundle Download */}
+      {(() => {
+        const BUNDLE_KEYS: DocumentKey[] = ["acceptanceLetter", "invoice", "existingPdfBundle"];
+        const allReady = BUNDLE_KEYS.every((k) => applicant.documents[k]);
+        if (!allReady) return null;
+        return (
+          <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-5 mt-5">
+            <div className="flex items-center justify-between">
+              <div>
+                <p className="text-sm font-semibold text-gray-700">{t("mypage.bundle_title")}</p>
+                <p className="text-xs text-gray-400 mt-0.5">{t("mypage.bundle_desc")}</p>
+              </div>
+              <button
+                onClick={handleBundleDownload}
+                disabled={bundleDownloading}
+                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors"
+              >
+                {bundleDownloading
+                  ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
+                  : <Download size={15} />
+                }
+                {bundleDownloading ? t("mypage.bundle_generating") : t("mypage.bundle_download")}
+              </button>
+            </div>
+          </div>
+        );
+      })()}
 
       {/* Preview Modal */}
       {previewDoc && (

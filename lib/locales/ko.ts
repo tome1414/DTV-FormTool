@@ -81,6 +81,10 @@ const ko = {
       ready: "제출 준비",
       embassy: "대사관 제출",
     },
+    bundle_title: "PDF 일괄 다운로드",
+    bundle_desc: "수락서 + 인보이스 + 기존 PDF 일괄 파일을 하나로 통합",
+    bundle_download: "PDF 다운로드",
+    bundle_generating: "생성 중...",
   },
   admin: {
     title: "관리자 대시보드",
@@ -150,6 +154,14 @@ const ko = {
     doc_completion: "서류 제출률",
     tab_dashboard: "대시보드",
     tab_settings: "권한 설정",
+    crop_passport: "Crop Passport",
+    crop_title: "Crop Passport Image",
+    crop_desc: "Drag to select the area to keep, then click Apply.",
+    crop_apply: "Apply Crop",
+    crop_saving: "Saving...",
+    bundle_download: "Download Bundle PDF",
+    bundle_generating: "Generating...",
+    bundle_not_ready: "Upload all 3 files to enable",
   },
   login: {
     title: "로그인",
@@ -190,3 +202,5 @@ const ko = {
 };
 
 export default ko;
+
+

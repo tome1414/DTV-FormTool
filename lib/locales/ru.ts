@@ -82,6 +82,10 @@ const ru = {
       ready: "Готово",
       embassy: "Посольство",
     },
+    bundle_title: "Скачать PDF пакет",
+    bundle_desc: "Письмо о зачислении + счёт + существующий PDF объединены",
+    bundle_download: "Скачать PDF",
+    bundle_generating: "Создание...",
   },
   admin: {
     title: "Панель администратора",
@@ -151,6 +155,14 @@ const ru = {
     doc_completion: "Процент подачи документов",
     tab_dashboard: "Панель управления",
     tab_settings: "Настройки прав",
+    crop_passport: "Crop Passport",
+    crop_title: "Crop Passport Image",
+    crop_desc: "Drag to select the area to keep, then click Apply.",
+    crop_apply: "Apply Crop",
+    crop_saving: "Saving...",
+    bundle_download: "Download Bundle PDF",
+    bundle_generating: "Generating...",
+    bundle_not_ready: "Upload all 3 files to enable",
   },
   login: {
     title: "Вход",
@@ -191,3 +203,5 @@ const ru = {
 };
 
 export default ru;
+
+

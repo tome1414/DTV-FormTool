@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Eye, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle, X, LayoutDashboard, Settings, Users } from "lucide-react";
+import { Eye, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle, X, LayoutDashboard, Settings, Users, Download, Crop } from "lucide-react";
 import { useStore, Applicant, ApplicationStatus, DocumentKey } from "@/lib/store";
 import { findConsulateById } from "@/lib/consulateData";
 import { useI18n } from "@/lib/i18n";
@@ -100,6 +100,8 @@ interface AdminUploadedFile {
   file: File;
 }
 
+const BUNDLE_DOC_KEYS = ["acceptanceLetter", "invoice", "existingPdfBundle"] as const;
+
 function DownloadSection({
   applicant,
   t,
@@ -110,8 +112,32 @@ function DownloadSection({
   const userReady = USER_DOC_KEYS.every((k) => applicant.documents[k]);
   const adminReady = ADMIN_DOC_KEYS.every((k) => applicant.documents[k]);
   const canDownload = userReady && adminReady;
+  const bundleReady = BUNDLE_DOC_KEYS.every((k) => applicant.documents[k]);
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
+  const [bundleDownloading, setBundleDownloading] = useState(false);
+
+  const handleBundleDownload = async () => {
+    setBundleDownloading(true);
+    try {
+      const res = await fetch(`/api/applications/${applicant.id}/bundle`);
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bundle_${applicant.applicationNumber}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silently fail — could add error state if needed
+    } finally {
+      setBundleDownloading(false);
+    }
+  };
 
   const handleDownload = async () => {
     setDownloading(true);
@@ -179,6 +205,24 @@ function DownloadSection({
           <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
         )}
         {canDownload ? t("admin.download_ready") : t("admin.download_pdf")}
+      </button>
+
+      {/* Bundle PDF Download */}
+      <button
+        onClick={bundleReady ? handleBundleDownload : undefined}
+        disabled={!bundleReady || bundleDownloading}
+        className={`mt-2 w-full text-sm py-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 ${
+          bundleReady
+            ? "bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white"
+            : "bg-gray-100 text-gray-400 cursor-not-allowed"
+        }`}
+        title={bundleReady ? undefined : t("admin.bundle_not_ready")}
+      >
+        {bundleDownloading
+          ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+          : <Download size={14} />
+        }
+        {bundleDownloading ? t("admin.bundle_generating") : t("admin.bundle_download")}
       </button>
     </div>
   );
@@ -502,6 +546,176 @@ function SettingsView() {
   );
 }
 
+function PassportCropModal({
+  applicationId,
+  storagePath,
+  onClose,
+  onSaved,
+}: {
+  applicationId: string;
+  storagePath: string;
+  onClose: () => void;
+  onSaved: (newPath: string) => void;
+}) {
+  const { t } = useI18n();
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imgRef = useRef<HTMLImageElement | null>(null);
+  const [signedUrl, setSignedUrl] = useState<string | null>(null);
+  const [imgLoaded, setImgLoaded] = useState(false);
+  const [saving, setSaving] = useState(false);
+
+  // crop state (in canvas coords)
+  const drag = useRef<{ startX: number; startY: number; active: boolean }>({ startX: 0, startY: 0, active: false });
+  const cropRect = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
+
+  useEffect(() => {
+    fetch(`/api/files?path=${encodeURIComponent(storagePath)}`)
+      .then((r) => r.json())
+      .then(({ url }) => setSignedUrl(url));
+  }, [storagePath]);
+
+  useEffect(() => {
+    if (!signedUrl || !canvasRef.current) return;
+    const img = new Image();
+    img.crossOrigin = "anonymous";
+    img.onload = () => {
+      imgRef.current = img;
+      const canvas = canvasRef.current!;
+      const maxW = 480;
+      const scale = Math.min(1, maxW / img.width);
+      canvas.width = img.width * scale;
+      canvas.height = img.height * scale;
+      const ctx = canvas.getContext("2d")!;
+      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+      setImgLoaded(true);
+    };
+    img.src = signedUrl;
+  }, [signedUrl]);
+
+  const redraw = (rect: { x: number; y: number; w: number; h: number } | null) => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    if (!canvas || !img) return;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    if (rect && rect.w > 0 && rect.h > 0) {
+      ctx.fillStyle = "rgba(0,0,0,0.4)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, rect.x, rect.y, rect.w, rect.h);
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    }
+  };
+
+  const getPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const r = canvasRef.current!.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+
+  const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const { x, y } = getPos(e);
+    drag.current = { startX: x, startY: y, active: true };
+    cropRect.current = null;
+  };
+  const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (!drag.current.active) return;
+    const { x, y } = getPos(e);
+    const rect = {
+      x: Math.min(drag.current.startX, x),
+      y: Math.min(drag.current.startY, y),
+      w: Math.abs(x - drag.current.startX),
+      h: Math.abs(y - drag.current.startY),
+    };
+    cropRect.current = rect;
+    redraw(rect);
+  };
+  const onMouseUp = () => { drag.current.active = false; };
+
+  const handleApply = async () => {
+    const canvas = canvasRef.current;
+    const img = imgRef.current;
+    const rect = cropRect.current;
+    if (!canvas || !img || !rect || rect.w < 4 || rect.h < 4) return;
+
+    setSaving(true);
+    const scale = img.width / canvas.width;
+    const tmp = document.createElement("canvas");
+    tmp.width = rect.w * scale;
+    tmp.height = rect.h * scale;
+    tmp.getContext("2d")!.drawImage(
+      img,
+      rect.x * scale, rect.y * scale, rect.w * scale, rect.h * scale,
+      0, 0, tmp.width, tmp.height
+    );
+
+    tmp.toBlob(async (blob) => {
+      if (!blob) { setSaving(false); return; }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await fetch(`/api/applications/${applicationId}/crop-passport`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ croppedDataUrl: reader.result }),
+          });
+          if (res.ok) {
+            const { storagePath: newPath } = await res.json();
+            onSaved(newPath);
+            onClose();
+          }
+        } finally {
+          setSaving(false);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }, "image/jpeg", 0.92);
+  };
+
+  return (
+    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
+      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+          <div>
+            <p className="font-semibold text-gray-800 text-sm">{t("admin.crop_title")}</p>
+            <p className="text-xs text-gray-400 mt-0.5">{t("admin.crop_desc")}</p>
+          </div>
+          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
+        </div>
+        <div className="p-4 overflow-auto max-h-[60vh] flex justify-center">
+          {!imgLoaded && (
+            <div className="h-40 flex items-center justify-center">
+              <span className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+            </div>
+          )}
+          <canvas
+            ref={canvasRef}
+            className={`rounded-lg border border-gray-200 cursor-crosshair ${imgLoaded ? "block" : "hidden"}`}
+            style={{ maxWidth: "100%" }}
+            onMouseDown={onMouseDown}
+            onMouseMove={onMouseMove}
+            onMouseUp={onMouseUp}
+          />
+        </div>
+        <div className="px-5 pb-5 flex justify-end gap-2">
+          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">
+            {t("common.cancel")}
+          </button>
+          <button
+            onClick={handleApply}
+            disabled={saving}
+            className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-medium flex items-center gap-2"
+          >
+            {saving && <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+            {saving ? t("admin.crop_saving") : t("admin.crop_apply")}
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 function PreviewModal({
   label,
   adminFile,
@@ -622,6 +836,7 @@ function DetailPanel({
   const [saving, setSaving] = useState(false);
   const [adminComment, setAdminComment] = useState("");
   const [showOnMypage, setShowOnMypage] = useState(false);
+  const [cropPassportOpen, setCropPassportOpen] = useState(false);
 
   useEffect(() => {
     const prevent = (e: DragEvent) => e.preventDefault();
@@ -828,6 +1043,16 @@ function DetailPanel({
                         className="w-6 h-6 flex items-center justify-center rounded transition-colors text-gray-300 hover:text-blue-500 flex-shrink-0"
                       >
                         <Eye size={13} />
+                      </button>
+                    )}
+                    {/* Crop button — passport image only */}
+                    {uploaded && key === "passport" && applicant.documentPaths?.["passport"] && (
+                      <button
+                        onClick={() => setCropPassportOpen(true)}
+                        title={t("admin.crop_passport")}
+                        className="w-6 h-6 flex items-center justify-center rounded transition-colors text-gray-300 hover:text-orange-500 flex-shrink-0"
+                      >
+                        <Crop size={13} />
                       </button>
                     )}
                     {/* ✓ approve toggle — green when approved, click again to un-approve */}
@@ -1184,6 +1409,17 @@ function DetailPanel({
           storagePath={adminFiles[previewDoc.key] ? undefined : applicant.documentPaths?.[previewDoc.key]}
           uploadedAt={applicant.updatedAt}
           onClose={() => setPreviewDoc(null)}
+        />
+      )}
+
+      {cropPassportOpen && applicant.documentPaths?.["passport"] && (
+        <PassportCropModal
+          applicationId={applicant.id}
+          storagePath={applicant.documentPaths["passport"]}
+          onClose={() => setCropPassportOpen(false)}
+          onSaved={(newPath) => {
+            updateDocument(applicant.id, "passport", true, newPath);
+          }}
         />
       )}
     </div>
