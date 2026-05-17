@@ -112,7 +112,7 @@ export async function POST(request: NextRequest) {
 
   await supabaseAdmin.from("status_history").insert({
     application_id: app.id,
-    status: "確認待ち",
+    status: "レビュー中",
     changed_by: userId,
   });
 

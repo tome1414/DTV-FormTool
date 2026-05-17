@@ -4,7 +4,6 @@ import React, { createContext, useContext, useState, useEffect, useCallback } fr
 import { useAuth } from "@/lib/auth";
 
 export type ApplicationStatus =
-  | "確認待ち"
   | "レビュー中"
   | "書類不足"
   | "提出準備完了"

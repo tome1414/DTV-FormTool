@@ -9,7 +9,6 @@ import { useAuth } from "@/lib/auth";
 import AuthGuard from "@/components/AuthGuard";
 
 const STATUS_STYLES: Record<ApplicationStatus, string> = {
-  確認待ち: "bg-yellow-100 text-yellow-800",
   レビュー中: "bg-blue-100 text-blue-800",
   書類不足: "bg-red-100 text-red-800",
   提出準備完了: "bg-green-100 text-green-800",
@@ -19,7 +18,6 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
 };
 
 const STATUS_I18N: Record<ApplicationStatus, string> = {
-  確認待ち: "status.pending",
   レビュー中: "status.reviewing",
   書類不足: "status.insufficient",
   提出準備完了: "status.ready",
@@ -29,7 +27,6 @@ const STATUS_I18N: Record<ApplicationStatus, string> = {
 };
 
 const ALL_STATUSES: ApplicationStatus[] = [
-  "確認待ち",
   "レビュー中",
   "書類不足",
   "提出準備完了",
@@ -221,7 +218,6 @@ function VBarChart({ data }: { data: { label: string; value: number }[] }) {
 // ── Dashboard view (superadmin only) ─────────────────────────────────────────
 
 const STATUS_HEX: Record<ApplicationStatus, string> = {
-  確認待ち: "#FBBF24",
   レビュー中: "#60A5FA",
   書類不足: "#F87171",
   提出準備完了: "#34D399",
@@ -230,7 +226,6 @@ const STATUS_HEX: Record<ApplicationStatus, string> = {
   DTV承認: "#10B981",
 };
 const STATUS_TW: Record<ApplicationStatus, string> = {
-  確認待ち: "bg-yellow-400",
   レビュー中: "bg-blue-400",
   書類不足: "bg-red-400",
   提出準備完了: "bg-green-400",
@@ -598,6 +593,7 @@ function DetailPanel({
   const [notifying, setNotifying] = useState(false);
   const [confirmSave, setConfirmSave] = useState(false);
   const [saving, setSaving] = useState(false);
+  const [adminComment, setAdminComment] = useState("");
 
   useEffect(() => {
     const prevent = (e: DragEvent) => e.preventDefault();
@@ -637,6 +633,7 @@ function DetailPanel({
   };
 
   const handleSave = () => {
+    setAdminComment("");
     setConfirmSave(true);
   };
 
@@ -654,7 +651,7 @@ function DetailPanel({
             applicantName: applicant.name,
             applicationNumber: applicant.applicationNumber,
             newStatus: selectedStatus,
-            notes: applicant.notes,
+            adminComment: adminComment.trim() || undefined,
           }),
         });
         const json = await res.json();
@@ -1041,7 +1038,26 @@ function DetailPanel({
                 {t("admin.confirm_save_desc", { name: applicant.name, status: t(STATUS_I18N[selectedStatus]) })}
               </p>
             </div>
-            <div className="px-6 py-4 space-y-2">
+            <div className="px-6 pt-4 pb-2">
+              <label className="block text-xs font-medium text-gray-600 mb-1">
+                Message to applicant <span className="text-gray-400 font-normal">(included in email)</span>
+                {(selectedStatus === "書類不足" || selectedStatus === "大使館修正依頼") && (
+                  <span className="ml-2 text-orange-500 font-semibold">⚠ Recommended</span>
+                )}
+              </label>
+              <textarea
+                value={adminComment}
+                onChange={(e) => setAdminComment(e.target.value)}
+                placeholder="e.g. Your bank statement shows less than 500,000 THB. Please resubmit."
+                rows={3}
+                className={`w-full text-sm border rounded-lg px-3 py-2 resize-none focus:outline-none transition-colors ${
+                  selectedStatus === "書類不足" || selectedStatus === "大使館修正依頼"
+                    ? "border-orange-300 bg-orange-50 focus:border-orange-400"
+                    : "border-gray-200 bg-gray-50 focus:border-blue-400"
+                }`}
+              />
+            </div>
+            <div className="px-6 pb-4 space-y-2">
               <button
                 onClick={() => handleConfirmSave(true)}
                 className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
@@ -1104,7 +1120,6 @@ function AdminContent() {
 
   const counts = {
     total: applicants.length,
-    waiting: applicants.filter((a) => a.status === "確認待ち").length,
     ready: applicants.filter((a) => a.status === "提出準備完了").length,
     insufficient: applicants.filter((a) => a.status === "書類不足").length,
   };
@@ -1147,19 +1162,13 @@ function AdminContent() {
         <p className="text-gray-500 text-sm mb-6">{t("admin.subtitle")}</p>
 
         {/* Summary Cards */}
-        <div className="grid grid-cols-4 gap-4 mb-6">
+        <div className="grid grid-cols-3 gap-4 mb-6">
           {[
             {
               label: t("admin.total"),
               value: counts.total,
               color: "border-blue-400 bg-blue-50",
               text: "text-blue-700",
-            },
-            {
-              label: t("admin.waiting"),
-              value: counts.waiting,
-              color: "border-yellow-400 bg-yellow-50",
-              text: "text-yellow-700",
             },
             {
               label: t("admin.ready"),

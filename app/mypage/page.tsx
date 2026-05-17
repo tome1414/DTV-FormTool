@@ -7,7 +7,6 @@ import { useI18n } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
 
 const STATUS_STYLES: Record<ApplicationStatus, string> = {
-  確認待ち: "bg-yellow-100 text-yellow-800 border-yellow-300",
   レビュー中: "bg-blue-100 text-blue-800 border-blue-300",
   書類不足: "bg-red-100 text-red-800 border-red-300",
   提出準備完了: "bg-green-100 text-green-800 border-green-300",
@@ -17,7 +16,6 @@ const STATUS_STYLES: Record<ApplicationStatus, string> = {
 };
 
 const STATUS_I18N: Record<ApplicationStatus, string> = {
-  確認待ち: "status.pending",
   レビュー中: "status.reviewing",
   書類不足: "status.insufficient",
   提出準備完了: "status.ready",
@@ -27,7 +25,6 @@ const STATUS_I18N: Record<ApplicationStatus, string> = {
 };
 
 const STEP_INDEX: Record<ApplicationStatus, number> = {
-  確認待ち: 1,
   レビュー中: 1,
   書類不足: 1,
   提出準備完了: 2,
