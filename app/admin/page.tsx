@@ -621,6 +621,7 @@ function DetailPanel({
   const [confirmSave, setConfirmSave] = useState(false);
   const [saving, setSaving] = useState(false);
   const [adminComment, setAdminComment] = useState("");
+  const [showOnMypage, setShowOnMypage] = useState(false);
 
   useEffect(() => {
     const prevent = (e: DragEvent) => e.preventDefault();
@@ -661,6 +662,7 @@ function DetailPanel({
 
   const handleSave = () => {
     setAdminComment("");
+    setShowOnMypage(false);
     setConfirmSave(true);
   };
 
@@ -668,6 +670,17 @@ function DetailPanel({
     setConfirmSave(false);
     setSaving(true);
     updateStatus(applicant.id, selectedStatus);
+
+    // コメントをマイページに表示する場合はDBのnotesに保存
+    const comment = adminComment.trim();
+    if (comment && showOnMypage) {
+      await fetch(`/api/applications/${applicant.id}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ notes: comment }),
+      }).catch(console.error);
+    }
+
     if (sendNotification) {
       try {
         const res = await fetch("/api/notify-status", {
@@ -678,7 +691,7 @@ function DetailPanel({
             applicantName: applicant.name,
             applicationNumber: applicant.applicationNumber,
             newStatus: selectedStatus,
-            adminComment: adminComment.trim() || undefined,
+            adminComment: comment || undefined,
           }),
         });
         const json = await res.json();
@@ -1102,6 +1115,20 @@ function DetailPanel({
                         : "border-gray-200 bg-gray-50 focus:border-blue-400"
                     }`}
                   />
+                  {/* Show on mypage toggle */}
+                  {adminComment.trim() && (
+                    <label className="flex items-center gap-2 mt-2 cursor-pointer select-none">
+                      <div
+                        onClick={() => setShowOnMypage(v => !v)}
+                        className={`relative w-9 h-5 rounded-full transition-colors flex-shrink-0 ${showOnMypage ? "bg-blue-500" : "bg-gray-200"}`}
+                      >
+                        <span className={`absolute top-0.5 left-0.5 w-4 h-4 bg-white rounded-full shadow transition-transform ${showOnMypage ? "translate-x-4" : ""}`} />
+                      </div>
+                      <span className="text-xs text-gray-600">
+                        {lang === "ja" ? "申請者のマイページにも表示する" : "Also show on applicant's My Page"}
+                      </span>
+                    </label>
+                  )}
                 </div>
 
                 {/* Email preview */}
