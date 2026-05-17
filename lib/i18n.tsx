@@ -64,6 +64,7 @@ export function I18nProvider({ children }: { children: React.ReactNode }) {
 
   const t = useCallback(
     (key: string, vars?: Record<string, string | number>): string => {
+      if (!key) return key ?? "";
       const locale = LOCALES[lang] as Record<string, unknown>;
       let value = resolvePath(locale, key) ?? resolvePath(LOCALES.en as Record<string, unknown>, key) ?? key;
       if (vars) {

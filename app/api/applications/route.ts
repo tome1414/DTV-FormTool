@@ -92,6 +92,7 @@ export async function POST(request: NextRequest) {
       nationality: nationality ?? null,
       consulate_id: consulateId ?? null,
       user_id: userId,
+      status: "レビュー中",
     })
     .select()
     .single();

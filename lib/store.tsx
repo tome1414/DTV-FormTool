@@ -93,13 +93,16 @@ function mapDbToApplicant(app: Record<string, any>): Applicant {
     .map((h) => ({ status: h.status as ApplicationStatus, timestamp: h.timestamp.split("T")[0] }))
     .sort((a, b) => a.timestamp.localeCompare(b.timestamp));
 
+  // Normalize legacy '確認待ち' status to 'レビュー中'
+  const status = (app.status === "確認待ち" ? "レビュー中" : app.status) as ApplicationStatus;
+
   return {
     id: app.id,
     userId: app.user_id ?? undefined,
     applicationNumber: app.application_number,
     name: [app.last_name, app.first_name].filter(Boolean).join(" "),
     email: app.email,
-    status: app.status as ApplicationStatus,
+    status,
     documents,
     documentWarnings:     Object.keys(documentWarnings).length     > 0 ? documentWarnings     : undefined,
     documentAutoWarnings: Object.keys(documentAutoWarnings).length > 0 ? documentAutoWarnings : undefined,
