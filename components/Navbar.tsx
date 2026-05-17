@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { usePathname, useRouter } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useI18n, Lang, LANG_LABELS, LANG_NAMES } from "@/lib/i18n";
 import { useState, useRef, useEffect } from "react";
@@ -98,8 +98,7 @@ const LANG_ORDER_ADMIN: Lang[] = ["en", "ja"];
 
 export default function Navbar() {
   const pathname = usePathname();
-  const router = useRouter();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { t, lang, setLang } = useI18n();
   const [langOpen, setLangOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
