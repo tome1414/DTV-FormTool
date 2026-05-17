@@ -119,9 +119,9 @@ export default function Navbar() {
     return () => document.removeEventListener("mousedown", handleClick);
   }, []);
 
-  const handleLogout = () => {
-    logout();
+  const handleLogout = async () => {
     router.push("/login");
+    await logout();
   };
 
   const navLinks = user

@@ -285,15 +285,27 @@ function MyPageContent() {
         </p>
       </div>
 
-      {/* Warning for 書類不足 */}
-      {applicant.status === "書類不足" && applicant.notes && (
-        <div className="bg-red-50 border border-red-300 rounded-xl p-4 mb-5 flex gap-3">
+      {/* Admin notes (shown when admin has set a message to display on mypage) */}
+      {applicant.notes && (
+        <div className={`border rounded-xl p-4 mb-5 flex gap-3 ${
+          applicant.status === "書類不足" || applicant.status === "大使館修正依頼"
+            ? "bg-red-50 border-red-300"
+            : "bg-amber-50 border-amber-300"
+        }`}>
           <span className="text-2xl">⚠️</span>
           <div>
-            <p className="font-semibold text-red-700 mb-1">
+            <p className={`font-semibold mb-1 ${
+              applicant.status === "書類不足" || applicant.status === "大使館修正依頼"
+                ? "text-red-700"
+                : "text-amber-700"
+            }`}>
               {t("mypage.warning_title")}
             </p>
-            <p className="text-sm text-red-600">{applicant.notes}</p>
+            <p className={`text-sm ${
+              applicant.status === "書類不足" || applicant.status === "大使館修正依頼"
+                ? "text-red-600"
+                : "text-amber-700"
+            }`}>{applicant.notes}</p>
           </div>
         </div>
       )}
