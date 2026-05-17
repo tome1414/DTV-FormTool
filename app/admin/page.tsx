@@ -35,6 +35,33 @@ const ALL_STATUSES: ApplicationStatus[] = [
   "DTV承認",
 ];
 
+const EMAIL_PREVIEW: Record<string, { subject: string; body: string }> = {
+  レビュー中: {
+    subject: "Your documents are under review",
+    body: "Our team is currently reviewing your submitted documents. We will be in touch shortly.",
+  },
+  書類不足: {
+    subject: "Action required: Missing or incomplete documents",
+    body: "We reviewed your documents and found that some items require resubmission. Please log in to your account and take the necessary action.",
+  },
+  提出準備完了: {
+    subject: "Your documents are ready for submission",
+    body: "All documents have been verified and are ready for embassy submission. We will notify you once submitted.",
+  },
+  大使館提出済み: {
+    subject: "Your documents have been submitted to the embassy",
+    body: "Your documents have been submitted to the embassy. Please wait for the review result.",
+  },
+  大使館修正依頼: {
+    subject: "Additional documents requested by the embassy",
+    body: "The embassy has requested additional or revised documents. Please log in to your account and await further instructions.",
+  },
+  DTV承認: {
+    subject: "🎉 Your DTV application has been approved",
+    body: "Congratulations! Your Thailand DTV (Destination Thailand Visa) application has been approved.\n\nYou can enter Thailand by presenting the PDF attached to your official DTV approval email at immigration.\n\nOur team will send you further instructions shortly.",
+  },
+};
+
 const DOC_DOTS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "passport", i18nKey: "docs.passport" },
   { key: "bankStatement", i18nKey: "docs.bankStatement" },
@@ -582,7 +609,7 @@ function DetailPanel({
   onClose: () => void;
 }) {
   const { updateStatus, updateDocument, updateDocumentWarning, approveDocument, unapproveDocument } = useStore();
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const [selectedStatus, setSelectedStatus] = useState<ApplicationStatus>(applicant.status);
   const [toast, setToast] = useState<string | null>(null);
   const [adminFiles, setAdminFiles] = useState<Record<string, AdminUploadedFile | null>>({});
@@ -1029,57 +1056,99 @@ function DetailPanel({
       {toast && <Toast message={toast} onClose={() => setToast(null)} />}
 
       {/* ── ステータス保存確認モーダル ── */}
-      {confirmSave && (
-        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-6">
-          <div className="bg-white rounded-2xl shadow-2xl w-full max-w-sm overflow-hidden">
-            <div className="px-6 py-5 border-b border-gray-100">
-              <h3 className="font-bold text-gray-800 text-base">{t("admin.confirm_save_title")}</h3>
-              <p className="text-sm text-gray-500 mt-1">
-                {t("admin.confirm_save_desc", { name: applicant.name, status: t(STATUS_I18N[selectedStatus]) })}
-              </p>
-            </div>
-            <div className="px-6 pt-4 pb-2">
-              <label className="block text-xs font-medium text-gray-600 mb-1">
-                Message to applicant <span className="text-gray-400 font-normal">(included in email)</span>
-                {(selectedStatus === "書類不足" || selectedStatus === "大使館修正依頼") && (
-                  <span className="ml-2 text-orange-500 font-semibold">⚠ Recommended</span>
+      {confirmSave && (() => {
+        const preview = EMAIL_PREVIEW[selectedStatus];
+        const previewBody = preview
+          ? adminComment.trim()
+            ? `${preview.body}\n\n${adminComment.trim()}`
+            : preview.body
+          : "";
+        const isWarningStatus = selectedStatus === "書類不足" || selectedStatus === "大使館修正依頼";
+        return (
+          <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
+            <div className="bg-white rounded-2xl shadow-2xl w-full max-w-lg overflow-hidden max-h-[90vh] flex flex-col">
+              {/* Header */}
+              <div className="px-6 py-4 border-b border-gray-100 flex-shrink-0">
+                <h3 className="font-bold text-gray-800 text-base">{t("admin.confirm_save_title")}</h3>
+                <p className="text-sm text-gray-500 mt-0.5">
+                  {t("admin.confirm_save_desc", { name: applicant.name, status: t(STATUS_I18N[selectedStatus]) })}
+                </p>
+              </div>
+
+              <div className="overflow-y-auto flex-1 px-6 py-4 space-y-4">
+                {/* Language warning */}
+                <p className="text-xs text-amber-700 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
+                  {lang === "ja"
+                    ? "⚠️ 日本語以外の申請者には英語でメールが届きます。コメントは英語で記入してください。"
+                    : "⚠️ Please write your message in English. Non-Japanese applicants will receive this message in English."}
+                </p>
+
+                {/* Comment textarea */}
+                <div>
+                  <label className="block text-xs font-medium text-gray-600 mb-1">
+                    Message to applicant <span className="text-gray-400 font-normal">(included in email)</span>
+                    {isWarningStatus && (
+                      <span className="ml-2 text-orange-500 font-semibold">⚠ Recommended</span>
+                    )}
+                  </label>
+                  <textarea
+                    value={adminComment}
+                    onChange={(e) => setAdminComment(e.target.value)}
+                    placeholder="e.g. Your bank statement shows less than 500,000 THB. Please resubmit."
+                    rows={3}
+                    className={`w-full text-sm border rounded-lg px-3 py-2 resize-none focus:outline-none transition-colors ${
+                      isWarningStatus
+                        ? "border-orange-300 bg-orange-50 focus:border-orange-400"
+                        : "border-gray-200 bg-gray-50 focus:border-blue-400"
+                    }`}
+                  />
+                </div>
+
+                {/* Email preview */}
+                {preview && (
+                  <div className="border border-gray-200 rounded-xl overflow-hidden text-xs">
+                    <div className="bg-gray-100 px-3 py-1.5 text-gray-500 font-medium flex items-center gap-1.5">
+                      <span>📧</span> Email Preview
+                    </div>
+                    <div className="px-3 py-2.5 space-y-2 bg-gray-50">
+                      <div>
+                        <span className="text-gray-400">Subject: </span>
+                        <span className="font-medium text-gray-700">[DTV Application] {preview.subject} — {applicant.applicationNumber}</span>
+                      </div>
+                      <div className="border-t border-gray-200 pt-2">
+                        <span className="text-gray-400 block mb-1">Body:</span>
+                        <p className="text-gray-700 whitespace-pre-line leading-relaxed">{previewBody}</p>
+                      </div>
+                    </div>
+                  </div>
                 )}
-              </label>
-              <textarea
-                value={adminComment}
-                onChange={(e) => setAdminComment(e.target.value)}
-                placeholder="e.g. Your bank statement shows less than 500,000 THB. Please resubmit."
-                rows={3}
-                className={`w-full text-sm border rounded-lg px-3 py-2 resize-none focus:outline-none transition-colors ${
-                  selectedStatus === "書類不足" || selectedStatus === "大使館修正依頼"
-                    ? "border-orange-300 bg-orange-50 focus:border-orange-400"
-                    : "border-gray-200 bg-gray-50 focus:border-blue-400"
-                }`}
-              />
-            </div>
-            <div className="px-6 pb-4 space-y-2">
-              <button
-                onClick={() => handleConfirmSave(true)}
-                className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
-              >
-                <span>📧</span> {t("admin.save_with_notify")}
-              </button>
-              <button
-                onClick={() => handleConfirmSave(false)}
-                className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm py-2.5 rounded-lg font-medium transition-colors"
-              >
-                {t("admin.save_without_notify")}
-              </button>
-              <button
-                onClick={() => setConfirmSave(false)}
-                className="w-full text-gray-400 hover:text-gray-600 text-sm py-1.5 transition-colors"
-              >
-                {t("common.cancel")}
-              </button>
+              </div>
+
+              {/* Actions */}
+              <div className="px-6 pb-5 pt-2 space-y-2 flex-shrink-0 border-t border-gray-100">
+                <button
+                  onClick={() => handleConfirmSave(true)}
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white text-sm py-2.5 rounded-lg font-medium transition-colors flex items-center justify-center gap-2"
+                >
+                  <span>📧</span> {t("admin.save_with_notify")}
+                </button>
+                <button
+                  onClick={() => handleConfirmSave(false)}
+                  className="w-full border border-gray-300 text-gray-700 hover:bg-gray-50 text-sm py-2.5 rounded-lg font-medium transition-colors"
+                >
+                  {t("admin.save_without_notify")}
+                </button>
+                <button
+                  onClick={() => setConfirmSave(false)}
+                  className="w-full text-gray-400 hover:text-gray-600 text-sm py-1.5 transition-colors"
+                >
+                  {t("common.cancel")}
+                </button>
+              </div>
             </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {previewDoc && (
         <PreviewModal

@@ -46,7 +46,7 @@ const STATUS_CONTENT: Record<string, StatusContent> = {
   },
   大使館修正依頼: {
     subject: "Additional documents requested by the embassy",
-    body: "The embassy has requested additional or revised documents. Our team will contact you with further details.",
+    body: "The embassy has requested additional or revised documents. Please log in to your account and await further instructions.",
     headerColor: "#ea580c",
   },
   DTV承認: {
