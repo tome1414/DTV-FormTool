@@ -85,6 +85,8 @@ const ko = {
     bundle_desc: "수락서 + 인보이스 + 기존 PDF 일괄 파일을 하나로 통합",
     bundle_download: "PDF 다운로드",
     bundle_generating: "생성 중...",
+    note_added_on: "알림 날짜：",
+    dismiss_note: "확인했습니다",
   },
   admin: {
     title: "관리자 대시보드",

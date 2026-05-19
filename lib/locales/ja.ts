@@ -86,6 +86,8 @@ const ja = {
     bundle_desc: "受入れレター・インボイス・既存PDF一式を1つのファイルに結合",
     bundle_download: "PDFをダウンロード",
     bundle_generating: "生成中...",
+    note_added_on: "通知日：",
+    dismiss_note: "確認した",
   },
   admin: {
     title: "管理者ダッシュボード",

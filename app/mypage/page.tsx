@@ -199,7 +199,7 @@ function DocPreviewModal({
 }
 
 function MyPageContent() {
-  const { myApplication, isLoading, updateDocument } = useStore();
+  const { myApplication, isLoading, updateDocument, refresh } = useStore();
   const { t } = useI18n();
 
   useEffect(() => {
@@ -216,10 +216,24 @@ function MyPageContent() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [bundleDownloading, setBundleDownloading] = useState(false);
   const [bundleSizeLabel, setBundleSizeLabel] = useState<string | null>(null);
+  const [dismissing, setDismissing] = useState(false);
 
   const formatBytes = (bytes: number) => {
     if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
     return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  };
+
+  const handleDismissNote = async () => {
+    if (!myApplication || dismissing) return;
+    setDismissing(true);
+    try {
+      const res = await fetch(`/api/applications/${myApplication.id}/dismiss-notes`, {
+        method: "POST",
+      });
+      if (res.ok) refresh();
+    } finally {
+      setDismissing(false);
+    }
   };
   const fileRefs = useRef<Partial<Record<DocumentKey, HTMLInputElement | null>>>({});
 
@@ -318,29 +332,46 @@ function MyPageContent() {
       </div>
 
       {/* Admin notes (shown when admin has set a message to display on mypage) */}
-      {applicant.notes && (
-        <div className={`border rounded-xl p-4 mb-5 flex gap-3 ${
-          applicant.status === "書類不足" || applicant.status === "大使館修正依頼"
-            ? "bg-red-50 border-red-300"
-            : "bg-amber-50 border-amber-300"
-        }`}>
-          <span className="text-2xl">⚠️</span>
-          <div>
-            <p className={`font-semibold mb-1 ${
-              applicant.status === "書類不足" || applicant.status === "大使館修正依頼"
-                ? "text-red-700"
-                : "text-amber-700"
-            }`}>
-              {t("mypage.warning_title")}
-            </p>
-            <p className={`text-sm ${
-              applicant.status === "書類不足" || applicant.status === "大使館修正依頼"
-                ? "text-red-600"
-                : "text-amber-700"
-            }`}>{applicant.notes}</p>
+      {applicant.notes && (() => {
+        const raw = applicant.notes!;
+        const sep = raw.indexOf("|||");
+        const noteDate = sep > 0 ? raw.slice(0, sep) : null;
+        const noteText = sep > 0 ? raw.slice(sep + 3) : raw;
+        const isWarning = applicant.status === "書類不足" || applicant.status === "大使館修正依頼";
+        return (
+          <div className={`border rounded-xl p-4 mb-5 ${isWarning ? "bg-red-50 border-red-300" : "bg-amber-50 border-amber-300"}`}>
+            <div className="flex gap-3">
+              <span className="text-2xl flex-shrink-0">⚠️</span>
+              <div className="flex-1 min-w-0">
+                <div className="flex items-start justify-between gap-2 mb-1">
+                  <div>
+                    <p className={`font-semibold ${isWarning ? "text-red-700" : "text-amber-700"}`}>
+                      {t("mypage.warning_title")}
+                    </p>
+                    {noteDate && (
+                      <p className={`text-xs mt-0.5 ${isWarning ? "text-red-400" : "text-amber-500"}`}>
+                        {t("mypage.note_added_on")} {noteDate}
+                      </p>
+                    )}
+                  </div>
+                  <button
+                    onClick={handleDismissNote}
+                    disabled={dismissing}
+                    className={`flex-shrink-0 text-xs px-3 py-1.5 rounded-full border font-medium transition-colors disabled:opacity-50 ${
+                      isWarning
+                        ? "border-red-300 text-red-600 hover:bg-red-100"
+                        : "border-amber-300 text-amber-700 hover:bg-amber-100"
+                    }`}
+                  >
+                    {dismissing ? "..." : t("mypage.dismiss_note")}
+                  </button>
+                </div>
+                <p className={`text-sm ${isWarning ? "text-red-600" : "text-amber-700"}`}>{noteText}</p>
+              </div>
+            </div>
           </div>
-        </div>
-      )}
+        );
+      })()}
 
       {/* Step Bar */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-5">

@@ -85,6 +85,8 @@ const hi = {
     bundle_desc: "स्वीकृति पत्र + चालान + मौजूदा PDF एक साथ",
     bundle_download: "PDF डाउनलोड करें",
     bundle_generating: "बना रहे हैं...",
+    note_added_on: "सूचना तिथि：",
+    dismiss_note: "समझ गया",
   },
   admin: {
     title: "व्यवस्थापक डैशबोर्ड",

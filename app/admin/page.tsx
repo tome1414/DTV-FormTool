@@ -636,10 +636,12 @@ function PreviewModal({
         img.onload = () => {
           cropImgRef.current = img;
           const canvas = canvasRef.current!;
-          const maxW = 460;
-          const scale = Math.min(1, maxW / img.width);
-          canvas.width = img.width * scale;
-          canvas.height = img.height * scale;
+          // Full-screen crop: use ~90% of window dimensions leaving room for header/footer
+          const maxW = window.innerWidth * 0.9;
+          const maxH = window.innerHeight - 160; // header ~72px + footer ~88px
+          const scale = Math.min(1, maxW / img.width, maxH / img.height);
+          canvas.width = Math.round(img.width * scale);
+          canvas.height = Math.round(img.height * scale);
           canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
           setCropImgLoaded(true);
           URL.revokeObjectURL(blobUrl);
@@ -716,14 +718,19 @@ function PreviewModal({
 
   return (
     <div
-      className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center"
-      onClick={onClose}
+      className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center"
+      onClick={!cropMode ? onClose : undefined}
     >
       <div
-        className="bg-white rounded-2xl shadow-2xl w-full max-w-lg mx-4 overflow-hidden"
+        className={`bg-white shadow-2xl overflow-hidden flex flex-col transition-all duration-200 ${
+          cropMode
+            ? "w-screen h-screen rounded-none"
+            : "rounded-2xl w-full max-w-lg mx-4 max-h-[90vh]"
+        }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
+        {/* Header */}
+        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200 flex-shrink-0">
           <div>
             <h3 className="font-semibold text-gray-800 text-sm">{label}</h3>
             {cropMode && (
@@ -735,18 +742,20 @@ function PreviewModal({
           </button>
         </div>
 
-        <div className="p-5">
+        {/* Content */}
+        <div className={`${cropMode ? "flex-1 overflow-auto flex items-center justify-center p-4 bg-gray-950" : "p-5 overflow-auto"}`}>
           {cropMode ? (
             /* ── Crop canvas ── */
-            <div className="flex flex-col items-center">
+            <>
               {!cropImgLoaded && (
-                <div className="h-52 flex items-center justify-center">
-                  <span className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                <div className="flex items-center justify-center">
+                  <span className="w-10 h-10 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
                 </div>
               )}
               <canvas
                 ref={canvasRef}
-                className={`rounded-lg border border-gray-200 cursor-crosshair max-w-full ${cropImgLoaded ? "block" : "hidden"}`}
+                className={`rounded-lg border border-gray-600 cursor-crosshair max-w-full max-h-full ${cropImgLoaded ? "block" : "hidden"}`}
+                style={{ cursor: "crosshair" }}
                 onMouseDown={(e) => {
                   const { x, y } = getCropPos(e);
                   drag.current = { sx: x, sy: y, active: true };
@@ -764,7 +773,7 @@ function PreviewModal({
                 }}
                 onMouseUp={() => { drag.current.active = false; }}
               />
-            </div>
+            </>
           ) : loadingUrl ? (
             <div className="h-52 flex items-center justify-center">
               <span className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
@@ -785,19 +794,19 @@ function PreviewModal({
 
         {/* Footer buttons */}
         {(showCropBtn || cropMode) && (
-          <div className="px-5 pb-5 flex justify-between items-center gap-2 border-t border-gray-100 pt-4">
+          <div className={`flex justify-between items-center gap-2 border-t ${cropMode ? "border-gray-700 bg-gray-900 px-6 py-4" : "border-gray-100 px-5 pb-5 pt-4"}`}>
             {cropMode ? (
               <>
                 <button
                   onClick={() => { setCropMode(false); setCropImgLoaded(false); cropRect.current = null; }}
-                  className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
+                  className="px-5 py-2.5 text-sm border border-gray-500 rounded-lg text-gray-300 hover:bg-gray-800 transition-colors"
                 >
                   {t("common.cancel")}
                 </button>
                 <button
                   onClick={handleApplyCrop}
                   disabled={cropSaving}
-                  className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-medium flex items-center gap-2"
+                  className="px-5 py-2.5 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-600 text-white rounded-lg font-medium flex items-center gap-2 transition-colors"
                 >
                   {cropSaving && <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
                   {cropSaving ? t("admin.crop_saving") : t("admin.crop_apply")}
@@ -889,13 +898,15 @@ function DetailPanel({
     setSaving(true);
     updateStatus(applicant.id, selectedStatus);
 
-    // コメントをマイページに表示する場合はDBのnotesに保存
+    // コメントをマイページに表示する場合はDBのnotesに保存（日時プレフィックス付き）
     const comment = adminComment.trim();
     if (comment && showOnMypage) {
+      const today = new Date().toISOString().split("T")[0];
+      const timestampedComment = `${today}|||${comment}`;
       await fetch(`/api/applications/${applicant.id}`, {
         method: "PATCH",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ notes: comment }),
+        body: JSON.stringify({ notes: timestampedComment }),
       }).catch(console.error);
     }
 

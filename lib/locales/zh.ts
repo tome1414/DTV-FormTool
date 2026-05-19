@@ -85,6 +85,8 @@ const zh = {
     bundle_desc: "录取通知书 + 发票 + 现有PDF文件包合并为一个文件",
     bundle_download: "下载 PDF",
     bundle_generating: "生成中...",
+    note_added_on: "通知日期：",
+    dismiss_note: "已确认",
   },
   admin: {
     title: "管理员面板",

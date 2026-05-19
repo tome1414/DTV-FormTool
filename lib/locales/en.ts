@@ -86,6 +86,8 @@ const en = {
     bundle_desc: "Acceptance Letter + Invoice + Existing PDF Bundle merged into one file",
     bundle_download: "Download PDF",
     bundle_generating: "Generating...",
+    note_added_on: "Added on",
+    dismiss_note: "Got it",
   },
   admin: {
     title: "Admin Dashboard",

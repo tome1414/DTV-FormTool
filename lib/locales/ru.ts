@@ -86,6 +86,8 @@ const ru = {
     bundle_desc: "Письмо о зачислении + счёт + существующий PDF объединены",
     bundle_download: "Скачать PDF",
     bundle_generating: "Создание...",
+    note_added_on: "Дата уведомления：",
+    dismiss_note: "Понял(а)",
   },
   admin: {
     title: "Панель администратора",
