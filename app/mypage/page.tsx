@@ -215,6 +215,12 @@ function MyPageContent() {
   const [uploading, setUploading] = useState<Partial<Record<DocumentKey, boolean>>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [bundleDownloading, setBundleDownloading] = useState(false);
+  const [bundleSizeLabel, setBundleSizeLabel] = useState<string | null>(null);
+
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  };
   const fileRefs = useRef<Partial<Record<DocumentKey, HTMLInputElement | null>>>({});
 
   const handleBundleDownload = async () => {
@@ -228,6 +234,7 @@ function MyPageContent() {
         return;
       }
       const blob = await res.blob();
+      setBundleSizeLabel(formatBytes(blob.size));
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -477,7 +484,12 @@ function MyPageContent() {
                   ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
                   : <Download size={15} />
                 }
-                {bundleDownloading ? t("mypage.bundle_generating") : t("mypage.bundle_download")}
+                {bundleDownloading
+                  ? t("mypage.bundle_generating")
+                  : bundleSizeLabel
+                    ? `${t("mypage.bundle_download")} (${bundleSizeLabel})`
+                    : t("mypage.bundle_download")
+                }
               </button>
             </div>
           </div>

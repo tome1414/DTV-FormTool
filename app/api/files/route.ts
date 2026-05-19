@@ -6,6 +6,7 @@ const BUCKET = "documents";
 const SIGNED_URL_EXPIRES_IN = 60 * 60; // 1時間
 
 // GET /api/files?path=<storage_path>
+// GET /api/files?path=<storage_path>&download=1  → proxy raw file bytes (used by canvas crop to avoid CORS)
 export async function GET(request: NextRequest) {
   const sessionUser = await getSessionUser();
   if (!sessionUser) return unauthorized();
@@ -16,6 +17,23 @@ export async function GET(request: NextRequest) {
   // pathの形式: {applicationId}/{documentKey}/{filename}
   const applicationId = path.split("/")[0];
   if (!await canAccessApplication(sessionUser, applicationId)) return forbidden();
+
+  // ?download=1: proxy the raw file bytes so the browser can use it
+  // in a Canvas without cross-origin taint issues
+  if (request.nextUrl.searchParams.get("download") === "1") {
+    const { data, error } = await supabaseAdmin.storage.from(BUCKET).download(path);
+    if (error || !data) {
+      return NextResponse.json({ error: error?.message ?? "Not found" }, { status: 404 });
+    }
+    const buf = await data.arrayBuffer();
+    const mime = data.type || "application/octet-stream";
+    return new NextResponse(Buffer.from(buf), {
+      headers: {
+        "Content-Type": mime,
+        "Cache-Control": "no-store",
+      },
+    });
+  }
 
   const { data, error } = await supabaseAdmin.storage
     .from(BUCKET)

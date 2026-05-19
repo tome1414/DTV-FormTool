@@ -116,6 +116,13 @@ function DownloadSection({
   const [downloading, setDownloading] = useState(false);
   const [downloadError, setDownloadError] = useState<string | null>(null);
   const [bundleDownloading, setBundleDownloading] = useState(false);
+  const [bundleSizeLabel, setBundleSizeLabel] = useState<string | null>(null);
+
+  const formatBytes = (bytes: number) => {
+    if (bytes < 1024) return `${bytes}B`;
+    if (bytes < 1024 * 1024) return `${Math.round(bytes / 1024)}KB`;
+    return `${(bytes / 1024 / 1024).toFixed(1)}MB`;
+  };
 
   const handleBundleDownload = async () => {
     setBundleDownloading(true);
@@ -126,6 +133,7 @@ function DownloadSection({
         throw new Error(json.error ?? `HTTP ${res.status}`);
       }
       const blob = await res.blob();
+      setBundleSizeLabel(formatBytes(blob.size));
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -133,7 +141,7 @@ function DownloadSection({
       a.click();
       URL.revokeObjectURL(url);
     } catch {
-      // silently fail — could add error state if needed
+      // silently fail
     } finally {
       setBundleDownloading(false);
     }
@@ -222,7 +230,12 @@ function DownloadSection({
           ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
           : <Download size={14} />
         }
-        {bundleDownloading ? t("admin.bundle_generating") : t("admin.bundle_download")}
+        {bundleDownloading
+          ? t("admin.bundle_generating")
+          : bundleSizeLabel
+            ? `${t("admin.bundle_download")} (${bundleSizeLabel})`
+            : t("admin.bundle_download")
+        }
       </button>
     </div>
   );
@@ -546,193 +559,39 @@ function SettingsView() {
   );
 }
 
-function PassportCropModal({
-  applicationId,
-  storagePath,
-  onClose,
-  onSaved,
-}: {
-  applicationId: string;
-  storagePath: string;
-  onClose: () => void;
-  onSaved: (newPath: string) => void;
-}) {
-  const { t } = useI18n();
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const imgRef = useRef<HTMLImageElement | null>(null);
-  const [signedUrl, setSignedUrl] = useState<string | null>(null);
-  const [imgLoaded, setImgLoaded] = useState(false);
-  const [saving, setSaving] = useState(false);
-
-  // crop state (in canvas coords)
-  const drag = useRef<{ startX: number; startY: number; active: boolean }>({ startX: 0, startY: 0, active: false });
-  const cropRect = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
-
-  useEffect(() => {
-    fetch(`/api/files?path=${encodeURIComponent(storagePath)}`)
-      .then((r) => r.json())
-      .then(({ url }) => setSignedUrl(url));
-  }, [storagePath]);
-
-  useEffect(() => {
-    if (!signedUrl || !canvasRef.current) return;
-    const img = new Image();
-    img.crossOrigin = "anonymous";
-    img.onload = () => {
-      imgRef.current = img;
-      const canvas = canvasRef.current!;
-      const maxW = 480;
-      const scale = Math.min(1, maxW / img.width);
-      canvas.width = img.width * scale;
-      canvas.height = img.height * scale;
-      const ctx = canvas.getContext("2d")!;
-      ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-      setImgLoaded(true);
-    };
-    img.src = signedUrl;
-  }, [signedUrl]);
-
-  const redraw = (rect: { x: number; y: number; w: number; h: number } | null) => {
-    const canvas = canvasRef.current;
-    const img = imgRef.current;
-    if (!canvas || !img) return;
-    const ctx = canvas.getContext("2d")!;
-    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
-    if (rect && rect.w > 0 && rect.h > 0) {
-      ctx.fillStyle = "rgba(0,0,0,0.4)";
-      ctx.fillRect(0, 0, canvas.width, canvas.height);
-      ctx.clearRect(rect.x, rect.y, rect.w, rect.h);
-      ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, rect.x, rect.y, rect.w, rect.h);
-      ctx.strokeStyle = "#3b82f6";
-      ctx.lineWidth = 2;
-      ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
-    }
-  };
-
-  const getPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const r = canvasRef.current!.getBoundingClientRect();
-    return { x: e.clientX - r.left, y: e.clientY - r.top };
-  };
-
-  const onMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const { x, y } = getPos(e);
-    drag.current = { startX: x, startY: y, active: true };
-    cropRect.current = null;
-  };
-  const onMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (!drag.current.active) return;
-    const { x, y } = getPos(e);
-    const rect = {
-      x: Math.min(drag.current.startX, x),
-      y: Math.min(drag.current.startY, y),
-      w: Math.abs(x - drag.current.startX),
-      h: Math.abs(y - drag.current.startY),
-    };
-    cropRect.current = rect;
-    redraw(rect);
-  };
-  const onMouseUp = () => { drag.current.active = false; };
-
-  const handleApply = async () => {
-    const canvas = canvasRef.current;
-    const img = imgRef.current;
-    const rect = cropRect.current;
-    if (!canvas || !img || !rect || rect.w < 4 || rect.h < 4) return;
-
-    setSaving(true);
-    const scale = img.width / canvas.width;
-    const tmp = document.createElement("canvas");
-    tmp.width = rect.w * scale;
-    tmp.height = rect.h * scale;
-    tmp.getContext("2d")!.drawImage(
-      img,
-      rect.x * scale, rect.y * scale, rect.w * scale, rect.h * scale,
-      0, 0, tmp.width, tmp.height
-    );
-
-    tmp.toBlob(async (blob) => {
-      if (!blob) { setSaving(false); return; }
-      const reader = new FileReader();
-      reader.onload = async () => {
-        try {
-          const res = await fetch(`/api/applications/${applicationId}/crop-passport`, {
-            method: "POST",
-            headers: { "Content-Type": "application/json" },
-            body: JSON.stringify({ croppedDataUrl: reader.result }),
-          });
-          if (res.ok) {
-            const { storagePath: newPath } = await res.json();
-            onSaved(newPath);
-            onClose();
-          }
-        } finally {
-          setSaving(false);
-        }
-      };
-      reader.readAsDataURL(blob);
-    }, "image/jpeg", 0.92);
-  };
-
-  return (
-    <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={onClose}>
-      <div className="bg-white rounded-2xl shadow-2xl w-full max-w-xl overflow-hidden" onClick={(e) => e.stopPropagation()}>
-        <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <div>
-            <p className="font-semibold text-gray-800 text-sm">{t("admin.crop_title")}</p>
-            <p className="text-xs text-gray-400 mt-0.5">{t("admin.crop_desc")}</p>
-          </div>
-          <button onClick={onClose} className="text-gray-400 hover:text-gray-700"><X size={18} /></button>
-        </div>
-        <div className="p-4 overflow-auto max-h-[60vh] flex justify-center">
-          {!imgLoaded && (
-            <div className="h-40 flex items-center justify-center">
-              <span className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
-            </div>
-          )}
-          <canvas
-            ref={canvasRef}
-            className={`rounded-lg border border-gray-200 cursor-crosshair ${imgLoaded ? "block" : "hidden"}`}
-            style={{ maxWidth: "100%" }}
-            onMouseDown={onMouseDown}
-            onMouseMove={onMouseMove}
-            onMouseUp={onMouseUp}
-          />
-        </div>
-        <div className="px-5 pb-5 flex justify-end gap-2">
-          <button onClick={onClose} className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50">
-            {t("common.cancel")}
-          </button>
-          <button
-            onClick={handleApply}
-            disabled={saving}
-            className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-medium flex items-center gap-2"
-          >
-            {saving && <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
-            {saving ? t("admin.crop_saving") : t("admin.crop_apply")}
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-}
-
 function PreviewModal({
   label,
   adminFile,
   storagePath,
   uploadedAt,
   onClose,
+  applicationId,
+  canCrop,
+  onCropped,
 }: {
   label: string;
   adminFile: AdminUploadedFile | null;
   storagePath?: string;
   uploadedAt: string;
   onClose: () => void;
+  applicationId?: string;
+  canCrop?: boolean;
+  onCropped?: (newPath: string) => void;
 }) {
+  const { t } = useI18n();
   const [objUrl, setObjUrl] = useState<string | null>(null);
   const [signedUrl, setSignedUrl] = useState<string | null>(null);
   const [loadingUrl, setLoadingUrl] = useState(false);
   const [isMimeImage, setIsMimeImage] = useState(false);
+
+  // ── Crop mode state ──────────────────────────────────────────────
+  const [cropMode, setCropMode] = useState(false);
+  const [cropImgLoaded, setCropImgLoaded] = useState(false);
+  const [cropSaving, setCropSaving] = useState(false);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const cropImgRef = useRef<HTMLImageElement | null>(null);
+  const drag = useRef<{ sx: number; sy: number; active: boolean }>({ sx: 0, sy: 0, active: false });
+  const cropRect = useRef<{ x: number; y: number; w: number; h: number } | null>(null);
 
   // Local file from admin upload
   useEffect(() => {
@@ -753,7 +612,6 @@ function PreviewModal({
         .then((r) => r.json())
         .then(({ url }) => {
           setSignedUrl(url ?? null);
-          // Detect mime type from path extension
           const ext = storagePath.split(".").pop()?.toLowerCase();
           setIsMimeImage(["jpg", "jpeg", "png", "webp", "gif"].includes(ext ?? ""));
         })
@@ -764,8 +622,97 @@ function PreviewModal({
     }
   }, [adminFile, storagePath]);
 
+  // Load image into canvas when entering crop mode (use proxy to avoid CORS taint)
+  useEffect(() => {
+    if (!cropMode || !storagePath || !canvasRef.current) return;
+    setCropImgLoaded(false);
+    cropRect.current = null;
+
+    fetch(`/api/files?path=${encodeURIComponent(storagePath)}&download=1`)
+      .then((r) => r.blob())
+      .then((blob) => {
+        const blobUrl = URL.createObjectURL(blob);
+        const img = new Image();
+        img.onload = () => {
+          cropImgRef.current = img;
+          const canvas = canvasRef.current!;
+          const maxW = 460;
+          const scale = Math.min(1, maxW / img.width);
+          canvas.width = img.width * scale;
+          canvas.height = img.height * scale;
+          canvas.getContext("2d")!.drawImage(img, 0, 0, canvas.width, canvas.height);
+          setCropImgLoaded(true);
+          URL.revokeObjectURL(blobUrl);
+        };
+        img.src = blobUrl;
+      })
+      .catch(console.error);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [cropMode, storagePath]);
+
+  const redrawCrop = (rect: { x: number; y: number; w: number; h: number } | null) => {
+    const canvas = canvasRef.current;
+    const img = cropImgRef.current;
+    if (!canvas || !img) return;
+    const ctx = canvas.getContext("2d")!;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    if (rect && rect.w > 2 && rect.h > 2) {
+      ctx.fillStyle = "rgba(0,0,0,0.45)";
+      ctx.fillRect(0, 0, canvas.width, canvas.height);
+      ctx.clearRect(rect.x, rect.y, rect.w, rect.h);
+      ctx.drawImage(img, rect.x, rect.y, rect.w, rect.h, rect.x, rect.y, rect.w, rect.h);
+      ctx.strokeStyle = "#3b82f6";
+      ctx.lineWidth = 2;
+      ctx.strokeRect(rect.x, rect.y, rect.w, rect.h);
+    }
+  };
+
+  const getCropPos = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    const r = canvasRef.current!.getBoundingClientRect();
+    return { x: e.clientX - r.left, y: e.clientY - r.top };
+  };
+
+  const handleApplyCrop = async () => {
+    const canvas = canvasRef.current;
+    const img = cropImgRef.current;
+    const rect = cropRect.current;
+    if (!canvas || !img || !rect || rect.w < 4 || rect.h < 4 || !applicationId) return;
+    setCropSaving(true);
+    const scale = img.width / canvas.width;
+    const tmp = document.createElement("canvas");
+    tmp.width = Math.round(rect.w * scale);
+    tmp.height = Math.round(rect.h * scale);
+    tmp.getContext("2d")!.drawImage(
+      img,
+      rect.x * scale, rect.y * scale, rect.w * scale, rect.h * scale,
+      0, 0, tmp.width, tmp.height,
+    );
+    tmp.toBlob(async (blob) => {
+      if (!blob) { setCropSaving(false); return; }
+      const reader = new FileReader();
+      reader.onload = async () => {
+        try {
+          const res = await fetch(`/api/applications/${applicationId}/crop-passport`, {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ croppedDataUrl: reader.result }),
+          });
+          if (res.ok) {
+            const { storagePath: newPath } = await res.json();
+            onCropped?.(newPath);
+            onClose();
+          }
+        } finally {
+          setCropSaving(false);
+        }
+      };
+      reader.readAsDataURL(blob);
+    }, "image/jpeg", 0.92);
+  };
+
   const displayUrl = objUrl ?? signedUrl;
   const isImage = isMimeImage;
+  const showCropBtn = canCrop && isImage && !adminFile && storagePath;
 
   return (
     <div
@@ -777,30 +724,55 @@ function PreviewModal({
         onClick={(e) => e.stopPropagation()}
       >
         <div className="flex items-center justify-between px-5 py-4 border-b border-gray-200">
-          <h3 className="font-semibold text-gray-800 text-sm">{label}</h3>
+          <div>
+            <h3 className="font-semibold text-gray-800 text-sm">{label}</h3>
+            {cropMode && (
+              <p className="text-xs text-gray-400 mt-0.5">{t("admin.crop_desc")}</p>
+            )}
+          </div>
           <button onClick={onClose} className="text-gray-400 hover:text-gray-700">
             <X size={18} />
           </button>
         </div>
 
         <div className="p-5">
-          {loadingUrl ? (
+          {cropMode ? (
+            /* ── Crop canvas ── */
+            <div className="flex flex-col items-center">
+              {!cropImgLoaded && (
+                <div className="h-52 flex items-center justify-center">
+                  <span className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                </div>
+              )}
+              <canvas
+                ref={canvasRef}
+                className={`rounded-lg border border-gray-200 cursor-crosshair max-w-full ${cropImgLoaded ? "block" : "hidden"}`}
+                onMouseDown={(e) => {
+                  const { x, y } = getCropPos(e);
+                  drag.current = { sx: x, sy: y, active: true };
+                  cropRect.current = null;
+                }}
+                onMouseMove={(e) => {
+                  if (!drag.current.active) return;
+                  const { x, y } = getCropPos(e);
+                  const r = {
+                    x: Math.min(drag.current.sx, x), y: Math.min(drag.current.sy, y),
+                    w: Math.abs(x - drag.current.sx), h: Math.abs(y - drag.current.sy),
+                  };
+                  cropRect.current = r;
+                  redrawCrop(r);
+                }}
+                onMouseUp={() => { drag.current.active = false; }}
+              />
+            </div>
+          ) : loadingUrl ? (
             <div className="h-52 flex items-center justify-center">
               <span className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
             </div>
           ) : displayUrl && isImage ? (
-            <img
-              src={displayUrl}
-              alt={label}
-              className="w-full max-h-96 object-contain rounded-lg border border-gray-200"
-            />
+            <img src={displayUrl} alt={label} className="w-full max-h-96 object-contain rounded-lg border border-gray-200" />
           ) : displayUrl ? (
-            <iframe
-              src={displayUrl}
-              className="w-full rounded-lg border border-gray-200"
-              style={{ height: "480px" }}
-              title={label}
-            />
+            <iframe src={displayUrl} className="w-full rounded-lg border border-gray-200" style={{ height: "480px" }} title={label} />
           ) : (
             <div className="bg-gray-50 rounded-xl border-2 border-dashed border-gray-200 h-52 flex flex-col items-center justify-center gap-3 text-center px-6">
               <span className="text-5xl">📄</span>
@@ -808,8 +780,40 @@ function PreviewModal({
               <p className="text-xs text-gray-400">ファイルが見つかりません</p>
             </div>
           )}
-          <p className="mt-3 text-xs text-gray-400">最終更新：{uploadedAt}</p>
+          {!cropMode && <p className="mt-3 text-xs text-gray-400">最終更新：{uploadedAt}</p>}
         </div>
+
+        {/* Footer buttons */}
+        {(showCropBtn || cropMode) && (
+          <div className="px-5 pb-5 flex justify-between items-center gap-2 border-t border-gray-100 pt-4">
+            {cropMode ? (
+              <>
+                <button
+                  onClick={() => { setCropMode(false); setCropImgLoaded(false); cropRect.current = null; }}
+                  className="px-4 py-2 text-sm border border-gray-300 rounded-lg text-gray-600 hover:bg-gray-50"
+                >
+                  {t("common.cancel")}
+                </button>
+                <button
+                  onClick={handleApplyCrop}
+                  disabled={cropSaving}
+                  className="px-4 py-2 text-sm bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg font-medium flex items-center gap-2"
+                >
+                  {cropSaving && <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />}
+                  {cropSaving ? t("admin.crop_saving") : t("admin.crop_apply")}
+                </button>
+              </>
+            ) : (
+              <button
+                onClick={() => setCropMode(true)}
+                className="flex items-center gap-1.5 text-sm px-3 py-1.5 border border-orange-300 text-orange-600 rounded-lg hover:bg-orange-50 transition-colors"
+              >
+                <Crop size={13} />
+                {t("admin.crop_passport")}
+              </button>
+            )}
+          </div>
+        )}
       </div>
     </div>
   );
@@ -836,7 +840,6 @@ function DetailPanel({
   const [saving, setSaving] = useState(false);
   const [adminComment, setAdminComment] = useState("");
   const [showOnMypage, setShowOnMypage] = useState(false);
-  const [cropPassportOpen, setCropPassportOpen] = useState(false);
 
   useEffect(() => {
     const prevent = (e: DragEvent) => e.preventDefault();
@@ -1043,16 +1046,6 @@ function DetailPanel({
                         className="w-6 h-6 flex items-center justify-center rounded transition-colors text-gray-300 hover:text-blue-500 flex-shrink-0"
                       >
                         <Eye size={13} />
-                      </button>
-                    )}
-                    {/* Crop button — passport image only */}
-                    {uploaded && key === "passport" && applicant.documentPaths?.["passport"] && (
-                      <button
-                        onClick={() => setCropPassportOpen(true)}
-                        title={t("admin.crop_passport")}
-                        className="w-6 h-6 flex items-center justify-center rounded transition-colors text-gray-300 hover:text-orange-500 flex-shrink-0"
-                      >
-                        <Crop size={13} />
                       </button>
                     )}
                     {/* ✓ approve toggle — green when approved, click again to un-approve */}
@@ -1409,17 +1402,9 @@ function DetailPanel({
           storagePath={adminFiles[previewDoc.key] ? undefined : applicant.documentPaths?.[previewDoc.key]}
           uploadedAt={applicant.updatedAt}
           onClose={() => setPreviewDoc(null)}
-        />
-      )}
-
-      {cropPassportOpen && applicant.documentPaths?.["passport"] && (
-        <PassportCropModal
           applicationId={applicant.id}
-          storagePath={applicant.documentPaths["passport"]}
-          onClose={() => setCropPassportOpen(false)}
-          onSaved={(newPath) => {
-            updateDocument(applicant.id, "passport", true, newPath);
-          }}
+          canCrop={previewDoc.key === "passport"}
+          onCropped={(newPath) => updateDocument(applicant.id, "passport", true, newPath)}
         />
       )}
     </div>
