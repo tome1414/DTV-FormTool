@@ -2,6 +2,7 @@
 
 import { useState, useRef, useEffect } from "react";
 import { Eye, RefreshCw, CheckCircle2, MinusCircle, Upload, Download } from "lucide-react";
+import WelcomeModal from "@/components/WelcomeModal";
 import { useStore, ApplicationStatus, DocumentKey } from "@/lib/store";
 import { useI18n } from "@/lib/i18n";
 import AuthGuard from "@/components/AuthGuard";
@@ -39,6 +40,13 @@ const DOC_KEYS: Array<{ key: DocumentKey; required: boolean }> = [
   { key: "photo", required: true },
   { key: "driverLicense", required: true },
 ];
+
+const DOC_NOTE_KEYS: Partial<Record<DocumentKey, string>> = {
+  passport: "docs.passport_note",
+  bankStatement: "docs.bankStatement_note",
+  photo: "docs.photo_note",
+  driverLicense: "docs.driverLicense_note",
+};
 
 
 function DropRow({
@@ -212,6 +220,15 @@ function MyPageContent() {
     };
   }, []);
   const [previewDoc, setPreviewDoc] = useState<DocumentKey | null>(null);
+  const [showWelcome, setShowWelcome] = useState(false);
+
+  // 初回登録後のウェルカムモーダル（/applyに行けなかった場合のフォールバック）
+  useEffect(() => {
+    if (localStorage.getItem("dtv_show_welcome") === "1") {
+      localStorage.removeItem("dtv_show_welcome");
+      setShowWelcome(true);
+    }
+  }, []);
   const [uploading, setUploading] = useState<Partial<Record<DocumentKey, boolean>>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [bundleDownloading, setBundleDownloading] = useState(false);
@@ -427,66 +444,76 @@ function MyPageContent() {
           {DOC_KEYS.map(({ key, required }) => {
             const uploaded = applicant.documents[key];
             const isUploading = uploading[key];
+            const noteKey = DOC_NOTE_KEYS[key];
             return (
               <DropRow
                 key={key}
-                className="relative flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0 px-1"
+                className="relative py-3 border-b border-gray-100 last:border-0 px-1"
                 onFileDrop={(file) => handleUpload(key, file)}
               >
-                <div className="flex items-center gap-3">
-                  {isUploading ? (
-                    <span className="w-[18px] h-[18px] rounded-full border-2 border-blue-400 border-t-transparent animate-spin flex-shrink-0" />
-                  ) : uploaded ? (
-                    <CheckCircle2 size={18} className="text-green-500 flex-shrink-0" />
-                  ) : (
-                    <MinusCircle size={18} className="text-gray-300 flex-shrink-0" />
-                  )}
-                  <span className="text-sm text-gray-700">{t(`docs.${key}`)}</span>
-                  {required && (
-                    <span className="text-xs bg-red-100 text-red-500 px-1.5 py-0.5 rounded flex-shrink-0">
-                      {t("common.required")}
-                    </span>
-                  )}
-                </div>
-                <div className="flex items-center gap-1.5 flex-shrink-0">
-                  {uploaded ? (
-                    <>
+                <div className="flex items-start justify-between gap-2">
+                  <div className="flex items-start gap-3 flex-1 min-w-0">
+                    {isUploading ? (
+                      <span className="w-[18px] h-[18px] rounded-full border-2 border-blue-400 border-t-transparent animate-spin flex-shrink-0 mt-0.5" />
+                    ) : uploaded ? (
+                      <CheckCircle2 size={18} className="text-green-500 flex-shrink-0 mt-0.5" />
+                    ) : (
+                      <MinusCircle size={18} className="text-gray-300 flex-shrink-0 mt-0.5" />
+                    )}
+                    <div className="min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="text-sm text-gray-700 font-medium">{t(`docs.${key}`)}</span>
+                        {required && (
+                          <span className="text-xs bg-red-100 text-red-500 px-1.5 py-0.5 rounded flex-shrink-0">
+                            {t("common.required")}
+                          </span>
+                        )}
+                      </div>
+                      {noteKey && !uploaded && (
+                        <p className="text-xs text-gray-400 mt-0.5 leading-snug">{t(noteKey)}</p>
+                      )}
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-1.5 flex-shrink-0">
+                    {uploaded ? (
+                      <>
+                        <button
+                          onClick={() => setPreviewDoc(key)}
+                          title={t("common.preview")}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
+                        >
+                          <Eye size={15} />
+                        </button>
+                        <button
+                          title={t("common.replace")}
+                          onClick={() => fileRefs.current[key]?.click()}
+                          className="w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 text-blue-500 hover:bg-blue-50 transition-colors"
+                        >
+                          <RefreshCw size={14} />
+                        </button>
+                      </>
+                    ) : (
                       <button
-                        onClick={() => setPreviewDoc(key)}
-                        title={t("common.preview")}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-gray-200 text-gray-500 hover:bg-gray-50 hover:text-gray-700 transition-colors"
-                      >
-                        <Eye size={15} />
-                      </button>
-                      <button
-                        title={t("common.replace")}
                         onClick={() => fileRefs.current[key]?.click()}
-                        className="w-8 h-8 flex items-center justify-center rounded-lg border border-blue-200 text-blue-500 hover:bg-blue-50 transition-colors"
+                        disabled={isUploading}
+                        className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg transition-colors"
                       >
-                        <RefreshCw size={14} />
+                        <Upload size={12} />
+                        {t("common.upload")}
                       </button>
-                    </>
-                  ) : (
-                    <button
-                      onClick={() => fileRefs.current[key]?.click()}
-                      disabled={isUploading}
-                      className="flex items-center gap-1.5 text-xs px-3 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 text-white rounded-lg transition-colors"
-                    >
-                      <Upload size={12} />
-                      {t("common.upload")}
-                    </button>
-                  )}
-                  <input
-                    ref={(el) => { fileRefs.current[key] = el; }}
-                    type="file"
-                    className="hidden"
-                    accept="image/*,.pdf"
-                    onChange={(e) => {
-                      const file = e.target.files?.[0];
-                      if (file) handleUpload(key, file);
-                      e.target.value = "";
-                    }}
-                  />
+                    )}
+                    <input
+                      ref={(el) => { fileRefs.current[key] = el; }}
+                      type="file"
+                      className="hidden"
+                      accept="image/*,.pdf"
+                      onChange={(e) => {
+                        const file = e.target.files?.[0];
+                        if (file) handleUpload(key, file);
+                        e.target.value = "";
+                      }}
+                    />
+                  </div>
                 </div>
               </DropRow>
             );
@@ -526,6 +553,9 @@ function MyPageContent() {
           </div>
         );
       })()}
+
+      {/* ウェルカムモーダル（初回登録時のフォールバック） */}
+      {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
 
       {/* Preview Modal */}
       {previewDoc && (
