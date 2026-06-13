@@ -63,6 +63,13 @@ const ko = {
     submit_pending: "필수 서류를 모두 업로드해 주세요 (나머지 {{count}}건)",
     success_title: "서류가 성공적으로 제출되었습니다",
     success_number: "신청 번호",
+    welcome_title: "서류를 준비해 주세요",
+    welcome_subtitle: "업로드 전에 다음 4가지 서류를 준비해 주세요.",
+    welcome_start: "준비됐어요! 시작하기 →",
+    welcome_note_passport: "여백을 잘라내고 정보가 명확히 보이도록 해주세요.",
+    welcome_note_bank: "잔액 50만 바트 이상이 필요합니다.",
+    welcome_note_photo: "4.5×3.5cm, 흰 배경, 정면. 모자·선글라스 불가.",
+    welcome_note_driver: "영사관 소재지 체류를 증명하는 서류가 필요합니다.",
     success_desc: "서류 확인 후 마이페이지에서 상태를 확인할 수 있습니다.",
   },
   mypage: {

@@ -52,6 +52,8 @@ export default function RegisterPage() {
         setError(result.error ?? t("register.error_default"));
         return;
       }
+      // 初回登録フラグ — apply画面でウェルカムモーダルを1回だけ表示する
+      localStorage.setItem("dtv_show_welcome", "1");
       router.push("/apply");
     } catch {
       setError(t("register.error_runtime"));

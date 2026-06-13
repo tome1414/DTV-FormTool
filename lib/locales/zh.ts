@@ -63,6 +63,13 @@ const zh = {
     submit_pending: "请上传所有必填文件（还差 {{count}} 件）",
     success_title: "文件提交成功",
     success_number: "申请编号",
+    welcome_title: "请准备您的文件",
+    welcome_subtitle: "上传前，请准备好以下4种文件。",
+    welcome_start: "准备好了！开始 →",
+    welcome_note_passport: "请裁剪边距，确保信息清晰可读。",
+    welcome_note_bank: "需要余额至少50万泰铢。",
+    welcome_note_photo: "4.5×3.5cm，白色背景，正面。不可戴帽子或墨镜。",
+    welcome_note_driver: "需要证明您在领事馆所在地合法居留的文件。",
     success_desc: "文件审核后，请在「我的页面」查看状态。",
   },
   mypage: {

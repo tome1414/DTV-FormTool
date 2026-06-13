@@ -65,6 +65,13 @@ const ja = {
     success_number: "申請番号",
     success_desc:
       "書類の確認後、マイページでステータスをご確認いただけます。",
+    welcome_title: "書類をご準備ください",
+    welcome_subtitle: "アップロード前に、以下4種類の書類を手元にご用意ください。",
+    welcome_start: "準備できました！はじめる →",
+    welcome_note_passport: "余白をトリミングし、情報が鮮明に読めるようにしてください。",
+    welcome_note_bank: "残高50万バーツ（約200万円）以上が必要です。",
+    welcome_note_photo: "縦4.5cm×横3.5cm、白背景、正面向き。帽子・サングラス不可。",
+    welcome_note_driver: "申請先領事館での滞在を証明する書類が必要です。",
   },
   mypage: {
     title: "マイページ",
