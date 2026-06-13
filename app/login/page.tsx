@@ -37,7 +37,7 @@ export default function LoginPage() {
     <div className="min-h-[80vh] flex items-center justify-center">
       <div className="w-full max-w-md">
         {/* Card */}
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-lg px-8 py-10">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-lg px-5 py-8 sm:px-8 sm:py-10">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4 shadow-md">

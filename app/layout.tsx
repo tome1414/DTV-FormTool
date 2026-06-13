@@ -22,7 +22,7 @@ export default function RootLayout({
           <AuthProvider>
             <StoreProvider>
               <Navbar />
-              <main className="p-6">{children}</main>
+              <main className="px-4 py-4 sm:p-6">{children}</main>
             </StoreProvider>
           </AuthProvider>
         </I18nProvider>

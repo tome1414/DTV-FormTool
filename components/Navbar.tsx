@@ -5,7 +5,7 @@ import { usePathname } from "next/navigation";
 import { useAuth } from "@/lib/auth";
 import { useI18n, Lang, LANG_LABELS, LANG_NAMES } from "@/lib/i18n";
 import { useState, useRef, useEffect } from "react";
-import { Bell, X } from "lucide-react";
+import { Bell, X, Menu } from "lucide-react";
 
 const MONTHLY_REPORT = {
   month: "2024年3月",
@@ -103,6 +103,7 @@ export default function Navbar() {
   const [langOpen, setLangOpen] = useState(false);
   const [reportOpen, setReportOpen] = useState(false);
   const [notifRead, setNotifRead] = useState(false);
+  const [menuOpen, setMenuOpen] = useState(false);
   const langRef = useRef<HTMLDivElement>(null);
   const isAdmin = user?.role === "admin" || user?.role === "superadmin";
   const isAdminPage = pathname.startsWith("/admin");
@@ -134,12 +135,12 @@ export default function Navbar() {
 
   return (
     <>
-    <nav className="bg-blue-800 text-white px-6 py-3 flex items-center gap-4 shadow-md">
+    <nav className="bg-blue-800 text-white px-4 sm:px-6 py-3 flex items-center gap-3 shadow-md">
       {/* Brand */}
-      <span className="font-bold text-lg mr-2 whitespace-nowrap">DTV Portal</span>
+      <span className="font-bold text-lg whitespace-nowrap">DTV Portal</span>
 
-      {/* Nav links */}
-      <div className="flex items-center gap-1 flex-1">
+      {/* Nav links — desktop only */}
+      <div className="hidden sm:flex items-center gap-1 flex-1">
         {navLinks.map((l) => (
           <Link
             key={l.href}
@@ -155,13 +156,16 @@ export default function Navbar() {
         ))}
       </div>
 
+      {/* Spacer — mobile only */}
+      <div className="flex-1 sm:hidden" />
+
       {/* Right side */}
-      <div className="flex items-center gap-3 ml-auto">
-        {/* Language switcher */}
+      <div className="flex items-center gap-2 sm:gap-3 ml-auto">
+        {/* Language switcher — always visible */}
         <div className="relative" ref={langRef}>
           <button
             onClick={() => setLangOpen((o) => !o)}
-            className="flex items-center gap-1.5 text-sm px-3 py-1.5 rounded border border-blue-600 hover:bg-blue-700 transition-colors"
+            className="flex items-center gap-1 sm:gap-1.5 text-sm px-2 sm:px-3 py-1.5 rounded border border-blue-600 hover:bg-blue-700 transition-colors"
           >
             <span>{LANG_LABELS[lang]}</span>
             <span className="text-blue-300 text-xs">▾</span>
@@ -187,11 +191,11 @@ export default function Navbar() {
           )}
         </div>
 
-        {/* Notification bell — admin only */}
+        {/* Notification bell — admin only, desktop */}
         {isAdmin && (
           <button
             onClick={() => { setReportOpen(true); setNotifRead(true); }}
-            className="relative p-1.5 rounded-full hover:bg-blue-700 transition-colors"
+            className="relative p-1.5 rounded-full hover:bg-blue-700 transition-colors hidden sm:block"
             title="月次レポート通知"
           >
             <Bell size={18} />
@@ -201,28 +205,80 @@ export default function Navbar() {
           </button>
         )}
 
-        {/* Auth buttons */}
-        {user ? (
-          <button
-            onClick={handleLogout}
-            className="text-sm px-3 py-1.5 rounded bg-blue-700 hover:bg-blue-600 transition-colors whitespace-nowrap"
-          >
-            {t("nav.logout")}
-          </button>
-        ) : (
-          <Link
-            href="/login"
-            className={`text-sm px-3 py-1.5 rounded transition-colors whitespace-nowrap ${
-              pathname === "/login"
-                ? "bg-white text-blue-800 font-semibold"
-                : "hover:bg-blue-700"
-            }`}
-          >
-            {t("nav.login")}
-          </Link>
-        )}
+        {/* Auth buttons — desktop only */}
+        <div className="hidden sm:block">
+          {user ? (
+            <button
+              onClick={handleLogout}
+              className="text-sm px-3 py-1.5 rounded bg-blue-700 hover:bg-blue-600 transition-colors whitespace-nowrap"
+            >
+              {t("nav.logout")}
+            </button>
+          ) : (
+            <Link
+              href="/login"
+              className={`text-sm px-3 py-1.5 rounded transition-colors whitespace-nowrap ${
+                pathname === "/login"
+                  ? "bg-white text-blue-800 font-semibold"
+                  : "hover:bg-blue-700"
+              }`}
+            >
+              {t("nav.login")}
+            </Link>
+          )}
+        </div>
+
+        {/* Hamburger — mobile only */}
+        <button
+          className="sm:hidden p-1.5 rounded hover:bg-blue-700 transition-colors"
+          onClick={() => setMenuOpen((o) => !o)}
+          aria-label="メニュー"
+        >
+          {menuOpen ? <X size={20} /> : <Menu size={20} />}
+        </button>
       </div>
     </nav>
+
+    {/* Mobile dropdown menu */}
+    {menuOpen && (
+      <div className="sm:hidden bg-blue-900 text-white shadow-lg z-40">
+        <div className="px-4 py-2 space-y-0.5">
+          {navLinks.map((l) => (
+            <Link
+              key={l.href}
+              href={l.href}
+              onClick={() => setMenuOpen(false)}
+              className={`block py-2.5 px-3 rounded text-sm transition-colors ${
+                pathname === l.href
+                  ? "bg-white text-blue-800 font-semibold"
+                  : "hover:bg-blue-800"
+              }`}
+            >
+              {l.label}
+            </Link>
+          ))}
+          <div className="border-t border-blue-700 pt-2 mt-1">
+            {user ? (
+              <button
+                onClick={() => { setMenuOpen(false); handleLogout(); }}
+                className="w-full text-left py-2.5 px-3 rounded text-sm hover:bg-blue-800 transition-colors"
+              >
+                {t("nav.logout")}
+              </button>
+            ) : (
+              <Link
+                href="/login"
+                onClick={() => setMenuOpen(false)}
+                className="block py-2.5 px-3 rounded text-sm hover:bg-blue-800 transition-colors"
+              >
+                {t("nav.login")}
+              </Link>
+            )}
+          </div>
+        </div>
+      </div>
+    )}
+
     {reportOpen && <MonthlyReportModal onClose={() => setReportOpen(false)} />}
     </>
   );

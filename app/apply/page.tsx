@@ -189,11 +189,11 @@ function ApplyContent() {
 
             <div>
               <label className="block text-xs font-medium text-gray-500 mb-1">申請予定の領事館</label>
-              <div className="grid grid-cols-3 gap-2">
+              <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <select
                   value={editRegion}
                   onChange={(e) => { setEditRegion(e.target.value); setEditCountry(""); setEditConsulateId(""); }}
-                  className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white"
+                  className="border border-gray-300 rounded-lg px-2 py-2.5 sm:py-2 text-sm focus:outline-none focus:border-blue-500 bg-white"
                 >
                   <option value="">地域</option>
                   {CONSULATE_REGIONS.map((r) => (
@@ -204,7 +204,7 @@ function ApplyContent() {
                   value={editCountry}
                   onChange={(e) => { setEditCountry(e.target.value); setEditConsulateId(""); }}
                   disabled={!editRegion}
-                  className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  className="border border-gray-300 rounded-lg px-2 py-2.5 sm:py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                 >
                   <option value="">国</option>
                   {editRegionData?.countries.map((c) => (
@@ -215,7 +215,7 @@ function ApplyContent() {
                   value={editConsulateId}
                   onChange={(e) => setEditConsulateId(e.target.value)}
                   disabled={!editCountry}
-                  className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                  className="border border-gray-300 rounded-lg px-2 py-2.5 sm:py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                 >
                   <option value="">公館</option>
                   {editCountryData?.consulates.map((c) => (

@@ -63,7 +63,7 @@ export default function RegisterPage() {
   return (
     <div className="min-h-[80vh] flex items-center justify-center py-10">
       <div className="w-full max-w-lg">
-        <div className="bg-white rounded-2xl border border-gray-200 shadow-lg px-8 py-10">
+        <div className="bg-white rounded-2xl border border-gray-200 shadow-lg px-5 py-8 sm:px-8 sm:py-10">
           {/* Header */}
           <div className="text-center mb-8">
             <div className="inline-flex items-center justify-center w-14 h-14 bg-blue-600 rounded-2xl mb-4 shadow-md">
@@ -170,7 +170,7 @@ export default function RegisterPage() {
                   {t("register.consulate")}
                   <span className="text-red-500 ml-1">*</span>
                 </label>
-                <div className="grid grid-cols-3 gap-2">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                   <select
                     value={selectedRegion}
                     onChange={(e) => {
@@ -178,7 +178,7 @@ export default function RegisterPage() {
                       setSelectedCountry("");
                       setSelectedConsulateId("");
                     }}
-                    className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
+                    className="border border-gray-300 rounded-lg px-2 py-2.5 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white"
                   >
                     <option value="">{t("register.region")}</option>
                     {CONSULATE_REGIONS.map((r) => (
@@ -190,7 +190,7 @@ export default function RegisterPage() {
                     value={selectedCountry}
                     onChange={(e) => { setSelectedCountry(e.target.value); setSelectedConsulateId(""); }}
                     disabled={!selectedRegion}
-                    className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                    className="border border-gray-300 rounded-lg px-2 py-2.5 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                   >
                     <option value="">{t("register.country")}</option>
                     {regionData?.countries.map((c) => (
@@ -202,7 +202,7 @@ export default function RegisterPage() {
                     value={selectedConsulateId}
                     onChange={(e) => setSelectedConsulateId(e.target.value)}
                     disabled={!selectedCountry}
-                    className="border border-gray-300 rounded-lg px-2 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
+                    className="border border-gray-300 rounded-lg px-2 py-2.5 sm:py-2 text-sm focus:outline-none focus:ring-2 focus:ring-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                   >
                     <option value="">{t("register.consulate")}</option>
                     {countryData?.consulates.map((c) => (

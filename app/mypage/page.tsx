@@ -310,8 +310,8 @@ function MyPageContent() {
       <p className="text-gray-500 text-sm mb-6">{t("mypage.subtitle")}</p>
 
       {/* Application Number & Status */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-5">
-        <div className="flex items-center justify-between">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 sm:p-6 mb-5">
+        <div className="flex items-start justify-between gap-3 flex-wrap">
           <div>
             <p className="text-xs text-gray-400 uppercase tracking-wide mb-1">
               {t("mypage.app_number")}
@@ -321,7 +321,7 @@ function MyPageContent() {
             </p>
           </div>
           <span
-            className={`border rounded-full px-4 py-1.5 text-sm font-semibold ${STATUS_STYLES[applicant.status]}`}
+            className={`border rounded-full px-3 py-1 sm:px-4 sm:py-1.5 text-xs sm:text-sm font-semibold flex-shrink-0 ${STATUS_STYLES[applicant.status]}`}
           >
             {t(STATUS_I18N[applicant.status])}
           </span>
@@ -374,7 +374,7 @@ function MyPageContent() {
       })()}
 
       {/* Step Bar */}
-      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-6 mb-5">
+      <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 sm:p-6 mb-5">
         <h2 className="text-sm font-semibold text-gray-600 mb-4">
           {t("mypage.step_title")}
         </h2>
@@ -383,7 +383,7 @@ function MyPageContent() {
             <div key={step} className="flex items-center flex-1 last:flex-none">
               <div className="flex flex-col items-center">
                 <div
-                  className={`w-9 h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors ${
+                  className={`w-8 h-8 sm:w-9 sm:h-9 rounded-full flex items-center justify-center text-sm font-bold border-2 transition-colors ${
                     i <= stepIndex
                       ? "bg-blue-600 border-blue-600 text-white"
                       : "bg-white border-gray-300 text-gray-400"
@@ -392,7 +392,7 @@ function MyPageContent() {
                   {i < stepIndex ? "✓" : i + 1}
                 </div>
                 <span
-                  className={`text-xs mt-1.5 whitespace-nowrap ${
+                  className={`text-[10px] sm:text-xs mt-1 sm:mt-1.5 text-center leading-tight ${
                     i <= stepIndex ? "text-blue-700 font-medium" : "text-gray-400"
                   }`}
                 >
@@ -401,7 +401,7 @@ function MyPageContent() {
               </div>
               {i < steps.length - 1 && (
                 <div
-                  className={`flex-1 h-0.5 mx-1 mb-4 ${
+                  className={`flex-1 h-0.5 mx-1 mb-5 ${
                     i < stepIndex ? "bg-blue-600" : "bg-gray-200"
                   }`}
                 />
@@ -500,8 +500,8 @@ function MyPageContent() {
         const allReady = BUNDLE_KEYS.every((k) => applicant.documents[k]);
         if (!allReady) return null;
         return (
-          <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-5 mt-5">
-            <div className="flex items-center justify-between">
+          <div className="bg-white rounded-xl border border-emerald-200 shadow-sm p-4 sm:p-5 mt-5">
+            <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
               <div>
                 <p className="text-sm font-semibold text-gray-700">{t("mypage.bundle_title")}</p>
                 <p className="text-xs text-gray-400 mt-0.5">{t("mypage.bundle_desc")}</p>
@@ -509,7 +509,7 @@ function MyPageContent() {
               <button
                 onClick={handleBundleDownload}
                 disabled={bundleDownloading}
-                className="flex items-center gap-2 px-4 py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors"
+                className="flex items-center justify-center gap-2 px-4 py-2.5 sm:py-2 bg-emerald-600 hover:bg-emerald-700 disabled:bg-gray-300 text-white text-sm font-medium rounded-lg transition-colors w-full sm:w-auto flex-shrink-0"
               >
                 {bundleDownloading
                   ? <span className="w-4 h-4 rounded-full border-2 border-white border-t-transparent animate-spin" />
