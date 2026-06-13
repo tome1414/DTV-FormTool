@@ -1,0 +1,29 @@
+name: Weekly Supabase Ping
+
+on:
+  schedule:
+    # 毎週月曜 9:00 JST（= 00:00 UTC）に実行
+    - cron: "0 0 * * 1"
+  workflow_dispatch: # 手動実行も可能
+
+jobs:
+  ping:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Ping Supabase via API
+        env:
+          PING_SECRET: ${{ secrets.PING_SECRET }}
+        run: |
+          echo "Pinging apply.dtvclub.com/api/ping ..."
+          RESPONSE=$(curl -s -o /tmp/response.json -w "%{http_code}" \
+            "https://apply.dtvclub.com/api/ping?secret=${PING_SECRET}")
+
+          cat /tmp/response.json
+          echo ""
+
+          if [ "$RESPONSE" -eq 200 ]; then
+            echo "✅ Ping successful (HTTP $RESPONSE)"
+          else
+            echo "❌ Ping failed (HTTP $RESPONSE)"
+            exit 1
+          fi
