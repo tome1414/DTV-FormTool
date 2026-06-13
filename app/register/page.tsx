@@ -1,7 +1,6 @@
 "use client";
 
 import { useState } from "react";
-import { useRouter } from "next/navigation";
 import { ExternalLink } from "lucide-react";
 import { useAuth } from "@/lib/auth";
 import { useI18n } from "@/lib/i18n";
@@ -11,7 +10,6 @@ import { CONSULATE_REGIONS, findConsulateById } from "@/lib/consulateData";
 export default function RegisterPage() {
   const { register } = useAuth();
   const { t } = useI18n();
-  const router = useRouter();
 
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
@@ -54,7 +52,9 @@ export default function RegisterPage() {
       }
       // 初回登録フラグ — apply画面でウェルカムモーダルを1回だけ表示する
       localStorage.setItem("dtv_show_welcome", "1");
-      router.push("/apply");
+      // router.push だとセッションCookieの確立タイミングでmiddlewareに弾かれることがある
+      // window.location.href でフルリロードすることで確実にセッションを確立させる
+      window.location.href = "/apply";
     } catch {
       setError(t("register.error_runtime"));
     } finally {
@@ -258,7 +258,7 @@ export default function RegisterPage() {
           <div className="text-center mt-4">
             <button
               type="button"
-              onClick={() => router.push("/login")}
+              onClick={() => { window.location.href = "/login"; }}
               className="text-sm text-blue-600 hover:underline"
             >
               {t("register.already_have_account")}
