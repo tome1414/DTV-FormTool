@@ -3,6 +3,7 @@
 import { useState, useRef, useEffect } from "react";
 import { ExternalLink, Pencil, Check, X } from "lucide-react";
 import WelcomeModal from "@/components/WelcomeModal";
+import MultiPageUpload from "@/components/MultiPageUpload";
 import { useI18n } from "@/lib/i18n";
 import { useAuth } from "@/lib/auth";
 import { useStore } from "@/lib/store";
@@ -15,6 +16,14 @@ interface UploadedFile {
   file: File;
   preview: string | null;
   storagePath?: string;
+}
+
+interface PageFile {
+  id: string;
+  file: File | null;
+  preview?: string;
+  storagePath?: string;
+  isUploading?: boolean;
 }
 
 interface DocConfig {
@@ -44,6 +53,7 @@ function ApplyContent() {
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, "upload" | "preview">>({});
   const [submitted, setSubmitted] = useState(false);
+  const [bankHistoryPages, setBankHistoryPages] = useState<PageFile[]>([]);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const consulateInfo = user?.consulateId ? findConsulateById(user.consulateId) : null;
@@ -147,8 +157,75 @@ function ApplyContent() {
     }
   };
 
+  // bankStatementHistory 複数ページ操作
+  const handleAddBankPage = () => {
+    setBankHistoryPages((prev) => [
+      ...prev,
+      { id: `page_${Date.now()}`, file: null },
+    ]);
+  };
+
+  const handleRemoveBankPage = (pageId: string) => {
+    const page = bankHistoryPages.find((p) => p.id === pageId);
+    if (page?.storagePath) {
+      fetch(`/api/files?path=${encodeURIComponent(page.storagePath)}`, {
+        method: "DELETE",
+      }).catch(console.error);
+    }
+    setBankHistoryPages((prev) => prev.filter((p) => p.id !== pageId));
+    // Update store if no more pages
+    if (bankHistoryPages.filter((p) => p.id !== pageId).length === 0 && myApplication) {
+      updateDocument(myApplication.id, "bankStatementHistory", false);
+    }
+  };
+
+  const handleUploadBankPage = async (pageId: string, file: File) => {
+    if (!myApplication) return;
+
+    setBankHistoryPages((prev) =>
+      prev.map((p) => (p.id === pageId ? { ...p, isUploading: true } : p))
+    );
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("applicationId", myApplication.id);
+      formData.append("documentKey", "bankStatementHistory");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (res.ok) {
+        setBankHistoryPages((prev) =>
+          prev.map((p) =>
+            p.id === pageId ? { ...p, file, storagePath: json.path, isUploading: false } : p
+          )
+        );
+        // Mark as uploaded if at least one page is uploaded
+        if (bankHistoryPages.some((p) => p.storagePath)) {
+          updateDocument(myApplication.id, "bankStatementHistory", true, json.path);
+        }
+      } else {
+        setUploadError(`アップロードエラー: ${json.error ?? res.status}`);
+        setBankHistoryPages((prev) =>
+          prev.map((p) => (p.id === pageId ? { ...p, isUploading: false } : p))
+        );
+      }
+    } catch (e) {
+      setUploadError(
+        `ネットワークエラー: ${e instanceof Error ? e.message : "不明"}`
+      );
+      setBankHistoryPages((prev) =>
+        prev.map((p) => (p.id === pageId ? { ...p, isUploading: false } : p))
+      );
+    }
+  };
+
   const requiredKeys = DOC_CONFIGS.filter((d) => d.required).map((d) => d.key);
-  const uploadedRequired = requiredKeys.filter((k) => uploads[k]);
+  const uploadedRequired = requiredKeys.filter((k) => {
+    if (k === "bankStatementHistory") {
+      return bankHistoryPages.some((p) => p.storagePath);
+    }
+    return uploads[k];
+  });
   const progress = Math.round((uploadedRequired.length / requiredKeys.length) * 100);
   const canSubmit = uploadedRequired.length === requiredKeys.length;
 
@@ -387,113 +464,130 @@ function ApplyContent() {
                     </div>
                   )}
 
-                  {/* Tabs */}
-                  {uploaded && (
-                    <div className="flex gap-2 mt-3 mb-3">
-                      <button
-                        onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "upload" }))}
-                        className={`text-sm px-3 py-1 rounded-md border transition-colors ${
-                          tab === "upload"
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "border-gray-300 text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        {t("common.upload")}
-                      </button>
-                      <button
-                        onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "preview" }))}
-                        className={`text-sm px-3 py-1 rounded-md border transition-colors ${
-                          tab === "preview"
-                            ? "bg-blue-600 text-white border-blue-600"
-                            : "border-gray-300 text-gray-600 hover:bg-gray-50"
-                        }`}
-                      >
-                        {t("common.preview")}
-                      </button>
-                    </div>
-                  )}
-
-                  {/* Upload Area */}
-                  {(!uploaded || tab === "upload") && (
-                    <div
-                      className="mt-3 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
-                      onDragOver={(e) => e.preventDefault()}
-                      onDrop={(e) => handleDrop(doc.key, e)}
-                      onClick={() => fileRefs.current[doc.key]?.click()}
-                    >
-                      <div className="text-3xl mb-2">📎</div>
-                      <p className="text-gray-600 text-sm">{t("apply.drag_drop")}</p>
-                      <p className="text-gray-400 text-xs mt-1">{t("apply.file_types")}</p>
-                      <input
-                        ref={(el) => { fileRefs.current[doc.key] = el; }}
-                        type="file"
-                        className="hidden"
-                        accept="image/*,.pdf"
-                        onChange={(e) => {
-                          const file = e.target.files?.[0];
-                          if (file) handleFile(doc.key, file);
-                        }}
+                  {/* Multi-page upload for bankStatementHistory */}
+                  {doc.key === "bankStatementHistory" ? (
+                    <div className="mt-3">
+                      <MultiPageUpload
+                        pages={bankHistoryPages}
+                        onAddPage={handleAddBankPage}
+                        onRemovePage={handleRemoveBankPage}
+                        onUploadPage={handleUploadBankPage}
+                        maxPages={30}
+                        disabled={false}
+                        t={t}
                       />
                     </div>
-                  )}
+                  ) : (
+                    <>
+                      {/* Tabs */}
+                      {uploaded && (
+                        <div className="flex gap-2 mt-3 mb-3">
+                          <button
+                            onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "upload" }))}
+                            className={`text-sm px-3 py-1 rounded-md border transition-colors ${
+                              tab === "upload"
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            {t("common.upload")}
+                          </button>
+                          <button
+                            onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "preview" }))}
+                            className={`text-sm px-3 py-1 rounded-md border transition-colors ${
+                              tab === "preview"
+                                ? "bg-blue-600 text-white border-blue-600"
+                                : "border-gray-300 text-gray-600 hover:bg-gray-50"
+                            }`}
+                          >
+                            {t("common.preview")}
+                          </button>
+                        </div>
+                      )}
 
-                  {/* Preview Area */}
-                  {uploaded && tab === "preview" && (
-                    <div className="mt-3">
-                      {uploaded.preview ? (
-                        <div className="relative inline-block">
-                          {doc.showGuide && (
-                            <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-                              <div
-                                className="border-2 border-dashed border-blue-500 opacity-60"
-                                style={{ width: "70px", height: "90px" }}
-                              />
-                            </div>
-                          )}
-                          <img
-                            src={uploaded.preview}
-                            alt="preview"
-                            className="max-h-64 max-w-full rounded-lg border border-gray-200 object-contain"
+                      {/* Upload Area */}
+                      {(!uploaded || tab === "upload") && (
+                        <div
+                          className="mt-3 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
+                          onDragOver={(e) => e.preventDefault()}
+                          onDrop={(e) => handleDrop(doc.key, e)}
+                          onClick={() => fileRefs.current[doc.key]?.click()}
+                        >
+                          <div className="text-3xl mb-2">📎</div>
+                          <p className="text-gray-600 text-sm">{t("apply.drag_drop")}</p>
+                          <p className="text-gray-400 text-xs mt-1">{t("apply.file_types")}</p>
+                          <input
+                            ref={(el) => { fileRefs.current[doc.key] = el; }}
+                            type="file"
+                            className="hidden"
+                            accept="image/*,.pdf"
+                            onChange={(e) => {
+                              const file = e.target.files?.[0];
+                              if (file) handleFile(doc.key, file);
+                            }}
                           />
                         </div>
-                      ) : (
-                        <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 flex items-center gap-3">
-                          <span className="text-3xl">📄</span>
-                          <div>
-                            <p className="font-medium text-gray-800 text-sm">
-                              {uploaded.file.name}
-                            </p>
-                            <p className="text-gray-400 text-xs">
-                              {(uploaded.file.size / 1024).toFixed(1)} KB
-                            </p>
+                      )}
+
+                      {/* Preview Area */}
+                      {uploaded && tab === "preview" && (
+                        <div className="mt-3">
+                          {uploaded.preview ? (
+                            <div className="relative inline-block">
+                              {doc.showGuide && (
+                                <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+                                  <div
+                                    className="border-2 border-dashed border-blue-500 opacity-60"
+                                    style={{ width: "70px", height: "90px" }}
+                                  />
+                                </div>
+                              )}
+                              <img
+                                src={uploaded.preview}
+                                alt="preview"
+                                className="max-h-64 max-w-full rounded-lg border border-gray-200 object-contain"
+                              />
+                            </div>
+                          ) : (
+                            <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 flex items-center gap-3">
+                              <span className="text-3xl">📄</span>
+                              <div>
+                                <p className="font-medium text-gray-800 text-sm">
+                                  {uploaded.file.name}
+                                </p>
+                                <p className="text-gray-400 text-xs">
+                                  {(uploaded.file.size / 1024).toFixed(1)} KB
+                                </p>
+                              </div>
+                            </div>
+                          )}
+                          <div className="flex gap-2 mt-3">
+                            <button
+                              onClick={() => fileRefs.current[doc.key]?.click()}
+                              className="text-sm px-3 py-1.5 border border-blue-400 text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+                            >
+                              {t("common.replace")}
+                            </button>
+                            <button
+                              onClick={() => handleRemove(doc.key)}
+                              className="text-sm px-3 py-1.5 border border-red-300 text-red-500 rounded-md hover:bg-red-50 transition-colors"
+                            >
+                              {t("common.delete")}
+                            </button>
+                            <input
+                              ref={(el) => { fileRefs.current[doc.key] = el; }}
+                              type="file"
+                              className="hidden"
+                              accept="image/*,.pdf"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) handleFile(doc.key, file);
+                              }}
+                            />
                           </div>
                         </div>
                       )}
-                      <div className="flex gap-2 mt-3">
-                        <button
-                          onClick={() => fileRefs.current[doc.key]?.click()}
-                          className="text-sm px-3 py-1.5 border border-blue-400 text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
-                        >
-                          {t("common.replace")}
-                        </button>
-                        <button
-                          onClick={() => handleRemove(doc.key)}
-                          className="text-sm px-3 py-1.5 border border-red-300 text-red-500 rounded-md hover:bg-red-50 transition-colors"
-                        >
-                          {t("common.delete")}
-                        </button>
-                        <input
-                          ref={(el) => { fileRefs.current[doc.key] = el; }}
-                          type="file"
-                          className="hidden"
-                          accept="image/*,.pdf"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleFile(doc.key, file);
-                          }}
-                        />
-                      </div>
-                    </div>
+                    </>
                   )}
                 </div>
               )}
