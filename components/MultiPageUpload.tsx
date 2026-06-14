@@ -1,7 +1,7 @@
 "use client";
 
-import { useRef } from "react";
-import { Upload, Trash2, Plus } from "lucide-react";
+import { useRef, useState } from "react";
+import { Upload, Trash2, Plus, Eye, X } from "lucide-react";
 
 interface PageFile {
   id: string;
@@ -18,6 +18,7 @@ interface MultiPageUploadProps {
   onUploadPage: (pageId: string, file: File) => void;
   maxPages?: number;
   disabled?: boolean;
+  documentKey: string;
   t: (key: string) => string;
 }
 
@@ -28,9 +29,11 @@ export default function MultiPageUpload({
   onUploadPage,
   maxPages = 30,
   disabled = false,
+  documentKey,
   t,
 }: MultiPageUploadProps) {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  const [previewPageId, setPreviewPageId] = useState<string | null>(null);
 
   const canAddMore = pages.length < maxPages;
 
@@ -70,7 +73,7 @@ export default function MultiPageUpload({
               </div>
             </div>
 
-            {/* Right: Upload/Delete buttons */}
+            {/* Right: Upload/Delete/Preview buttons */}
             <div className="flex items-center gap-2 flex-shrink-0 ml-2">
               {!isUploaded && !page.isUploading ? (
                 <button
@@ -84,14 +87,23 @@ export default function MultiPageUpload({
               ) : null}
 
               {isUploaded && (
-                <button
-                  onClick={() => onRemovePage(page.id)}
-                  disabled={disabled}
-                  title={t("common.delete")}
-                  className="p-1.5 text-gray-500 hover:text-red-600 disabled:text-gray-300 transition-colors"
-                >
-                  <Trash2 size={16} />
-                </button>
+                <>
+                  <button
+                    onClick={() => setPreviewPageId(page.id)}
+                    title={t("common.preview")}
+                    className="p-1.5 text-gray-500 hover:text-blue-600 transition-colors"
+                  >
+                    <Eye size={16} />
+                  </button>
+                  <button
+                    onClick={() => onRemovePage(page.id)}
+                    disabled={disabled}
+                    title={t("common.delete")}
+                    className="p-1.5 text-gray-500 hover:text-red-600 disabled:text-gray-300 transition-colors"
+                  >
+                    <Trash2 size={16} />
+                  </button>
+                </>
               )}
 
               <input
@@ -120,7 +132,7 @@ export default function MultiPageUpload({
           className="w-full flex items-center justify-center gap-2 py-2.5 border-2 border-dashed border-blue-300 text-blue-600 hover:bg-blue-50 disabled:border-gray-300 disabled:text-gray-400 rounded-lg transition-colors text-sm font-medium"
         >
           <Plus size={16} />
-          {t("docs.bankStatementHistory")} - {t("apply.add_page")} ({pages.length}/{maxPages})
+          {t(`docs.${documentKey}`)} - {t("apply.add_page")} ({pages.length}/{maxPages})
         </button>
       )}
 
@@ -128,6 +140,51 @@ export default function MultiPageUpload({
         <p className="text-xs text-gray-500 text-center">
           最大 {maxPages} ページまで登録できます
         </p>
+      )}
+
+      {/* Preview Modal */}
+      {previewPageId && (
+        <div className="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4" onClick={() => setPreviewPageId(null)}>
+          <div
+            className="bg-white rounded-xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex items-center justify-between sticky top-0 bg-white border-b border-gray-200 px-6 py-4">
+              <h3 className="text-lg font-semibold text-gray-800">
+                Page {pages.findIndex((p) => p.id === previewPageId) + 1} - {t(`docs.${documentKey}`)}
+              </h3>
+              <button
+                onClick={() => setPreviewPageId(null)}
+                className="p-1 text-gray-500 hover:text-gray-700"
+              >
+                <X size={20} />
+              </button>
+            </div>
+            <div className="p-6 flex justify-center">
+              {pages.find((p) => p.id === previewPageId)?.file?.type.startsWith("image/") ? (
+                <img
+                  src={URL.createObjectURL(pages.find((p) => p.id === previewPageId)!.file!)}
+                  alt="preview"
+                  className="max-w-full max-h-[70vh] object-contain rounded-lg"
+                />
+              ) : (
+                <div className="bg-gray-50 rounded-lg border border-gray-200 p-8 flex flex-col items-center gap-4">
+                  <span className="text-4xl">📄</span>
+                  <div className="text-center">
+                    <p className="font-medium text-gray-800">
+                      {pages.find((p) => p.id === previewPageId)?.file?.name}
+                    </p>
+                    <p className="text-xs text-gray-500 mt-1">
+                      {pages.find((p) => p.id === previewPageId)?.file ?
+                        `${(pages.find((p) => p.id === previewPageId)!.file!.size / 1024).toFixed(1)} KB`
+                        : ""}
+                    </p>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
       )}
     </div>
   );

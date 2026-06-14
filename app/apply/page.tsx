@@ -638,6 +638,7 @@ function ApplyContent() {
                         onUploadPage={handleUploadBankPage}
                         maxPages={30}
                         disabled={false}
+                        documentKey="bankStatementHistory"
                         t={t}
                       />
                     </div>
@@ -650,6 +651,7 @@ function ApplyContent() {
                         onUploadPage={handleUploadDriverPage}
                         maxPages={30}
                         disabled={false}
+                        documentKey="driverLicense"
                         t={t}
                       />
                     </div>
