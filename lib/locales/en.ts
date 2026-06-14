@@ -57,7 +57,7 @@ const en = {
   },
   apply: {
     title: "Document Upload",
-    subtitle: "Please upload all 4 required documents",
+    subtitle: "Please upload all 5 required documents",
     progress_label: "Required Documents Progress",
     progress_count: "{{uploaded}} / {{total}} completed",
     drag_drop: "Click or drag & drop",
@@ -69,12 +69,13 @@ const en = {
     success_desc:
       "After verification, you can check your status on My Page.",
     welcome_title: "Please prepare your documents",
-    welcome_subtitle: "Please have the following 4 documents ready before uploading.",
+    welcome_subtitle: "Please have the following 5 documents ready before uploading.",
     welcome_start: "Got it! Let's start →",
     welcome_note_passport: "Trim margins. Must be clearly readable.",
     welcome_note_bank: "Balance of at least 500,000 THB required.",
     welcome_note_photo: "4.5×3.5cm, white background, facing forward. No hats.",
     welcome_note_driver: "Proof of legal presence at consulate location.",
+    add_page: "Add Page",
   },
   mypage: {
     title: "My Page",
