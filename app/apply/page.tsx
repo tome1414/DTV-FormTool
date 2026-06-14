@@ -11,6 +11,34 @@ import { checkPassportMargin, checkPhotoBackground } from "@/lib/imageAnalysis";
 import { CONSULATE_REGIONS, findConsulateById, findConsulateLocation } from "@/lib/consulateData";
 import NationalitySelect from "@/components/NationalitySelect";
 import AuthGuard from "@/components/AuthGuard";
+import { ApplicationStatus } from "@/lib/store";
+
+const STATUS_STYLES: Record<ApplicationStatus, string> = {
+  レビュー中: "bg-blue-100 text-blue-800 border-blue-300",
+  書類不足: "bg-red-100 text-red-800 border-red-300",
+  提出準備完了: "bg-green-100 text-green-800 border-green-300",
+  大使館提出済み: "bg-purple-100 text-purple-800 border-purple-300",
+  大使館修正依頼: "bg-orange-100 text-orange-800 border-orange-300",
+  DTV承認: "bg-emerald-100 text-emerald-800 border-emerald-300",
+};
+
+const STATUS_I18N: Record<ApplicationStatus, string> = {
+  レビュー中: "status.reviewing",
+  書類不足: "status.insufficient",
+  提出準備完了: "status.ready",
+  大使館提出済み: "status.submitted",
+  大使館修正依頼: "status.embassy_revision",
+  DTV承認: "status.dtv_approved",
+};
+
+const STEP_INDEX: Record<ApplicationStatus, number> = {
+  レビュー中: 1,
+  書類不足: 1,
+  提出準備完了: 2,
+  大使館提出済み: 3,
+  大使館修正依頼: 3,
+  DTV承認: 4,
+};
 
 interface UploadedFile {
   file: File;
@@ -47,15 +75,13 @@ function ApplyContent() {
   const { setAutoWarning, updateDocument, myApplication } = useStore();
 
   const [showWelcome, setShowWelcome] = useState(false);
-  const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({ passport: true, bankStatementHistory: true });
+  const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({ passport: true });
   const [uploads, setUploads] = useState<Record<string, UploadedFile | null>>({});
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, "upload" | "preview">>({});
   const [submitted, setSubmitted] = useState(false);
-  const [bankHistoryPages, setBankHistoryPages] = useState<PageFile[]>([
-    { id: "page_initial", file: null },
-  ]);
+  const [bankHistoryPages, setBankHistoryPages] = useState<PageFile[]>([]);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const consulateInfo = user?.consulateId ? findConsulateById(user.consulateId) : null;
@@ -383,6 +409,57 @@ function ApplyContent() {
           </div>
         )}
       </div>
+
+      {/* Status & Steps */}
+      {myApplication && (
+        <div className="space-y-4 mb-6">
+          {/* Status */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p className="text-xs font-semibold text-gray-500 mb-2">申請状況</p>
+            <p className={`text-sm font-semibold px-3 py-2 rounded border inline-block ${STATUS_STYLES[myApplication.status]}`}>
+              {t(STATUS_I18N[myApplication.status])}
+            </p>
+          </div>
+
+          {/* Steps */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <p className="text-xs font-semibold text-gray-500 mb-3">申請ステップ</p>
+            <div className="flex items-center justify-between">
+              {[
+                { step: 1, label: t("mypage.steps.submit") },
+                { step: 2, label: t("mypage.steps.review") },
+                { step: 3, label: t("mypage.steps.ready") },
+                { step: 4, label: t("mypage.steps.embassy") },
+              ].map((s, idx) => {
+                const currentStep = STEP_INDEX[myApplication.status];
+                const isActive = s.step <= currentStep;
+                return (
+                  <div key={s.step} className="flex flex-col items-center flex-1">
+                    <div
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm mb-1 transition-colors ${
+                        isActive
+                          ? "bg-blue-600 text-white"
+                          : "bg-gray-200 text-gray-600"
+                      }`}
+                    >
+                      {s.step}
+                    </div>
+                    <p className="text-xs text-gray-600 text-center whitespace-nowrap">{s.label}</p>
+                    {idx < 3 && (
+                      <div
+                        className={`absolute w-12 h-0.5 mt-4 ${
+                          isActive ? "bg-blue-600" : "bg-gray-200"
+                        }`}
+                        style={{ left: `calc(${(idx + 0.5) * 25}% + 20px)` }}
+                      />
+                    )}
+                  </div>
+                );
+              })}
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Upload error */}
       {uploadError && (
