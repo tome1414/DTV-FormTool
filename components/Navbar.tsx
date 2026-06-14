@@ -128,8 +128,7 @@ export default function Navbar() {
     ? user.role === "admin"
       ? [{ href: "/admin", label: t("nav.admin") }]
       : [
-          { href: "/apply", label: t("nav.upload") },
-          { href: "/mypage", label: t("nav.mypage") },
+          { href: "/apply", label: t("nav.mypage") },
         ]
     : [{ href: "/apply", label: t("nav.upload") }];
 

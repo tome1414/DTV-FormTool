@@ -251,7 +251,9 @@ function ApplyContent() {
 
   return (
     <div className="max-w-2xl mx-auto">
-      <h1 className="text-2xl font-bold text-gray-800 mb-1">{t("apply.title")}</h1>
+      <h1 className="text-2xl font-bold text-gray-800 mb-1">
+        {user ? t("nav.mypage") : t("apply.title")}
+      </h1>
       <p className="text-gray-500 text-sm mb-6">{t("apply.subtitle")}</p>
 
       {/* ── Applicant Info ── */}
