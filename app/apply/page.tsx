@@ -413,6 +413,24 @@ function ApplyContent() {
       {/* Status & Steps */}
       {myApplication && (
         <div className="space-y-4 mb-6">
+          {/* Application Number & Date */}
+          <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
+            <div className="space-y-2">
+              <div>
+                <p className="text-xs font-semibold text-gray-500 mb-0.5">{t("mypage.app_number")}</p>
+                <p className="text-sm font-mono font-semibold text-gray-800">{myApplication.applicationNumber}</p>
+              </div>
+              {myApplication.submittedAt && (
+                <div>
+                  <p className="text-xs font-semibold text-gray-500 mb-0.5">{t("mypage.submitted_date")}</p>
+                  <p className="text-sm text-gray-700">
+                    {new Date(myApplication.submittedAt).toLocaleDateString("ja-JP")}
+                  </p>
+                </div>
+              )}
+            </div>
+          </div>
+
           {/* Status */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
             <p className="text-xs font-semibold text-gray-500 mb-2">申請状況</p>
@@ -423,20 +441,20 @@ function ApplyContent() {
 
           {/* Steps */}
           <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4">
-            <p className="text-xs font-semibold text-gray-500 mb-3">申請ステップ</p>
-            <div className="flex items-center justify-between">
+            <p className="text-xs font-semibold text-gray-500 mb-4">申請ステップ</p>
+            <div className="relative flex items-center justify-between">
               {[
                 { step: 1, label: t("mypage.steps.submit") },
                 { step: 2, label: t("mypage.steps.review") },
                 { step: 3, label: t("mypage.steps.ready") },
                 { step: 4, label: t("mypage.steps.embassy") },
-              ].map((s, idx) => {
+              ].map((s) => {
                 const currentStep = STEP_INDEX[myApplication.status];
                 const isActive = s.step <= currentStep;
                 return (
-                  <div key={s.step} className="flex flex-col items-center flex-1">
+                  <div key={s.step} className="flex flex-col items-center flex-1 relative z-10">
                     <div
-                      className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm mb-1 transition-colors ${
+                      className={`w-8 h-8 rounded-full flex items-center justify-center font-semibold text-sm mb-2 transition-colors ${
                         isActive
                           ? "bg-blue-600 text-white"
                           : "bg-gray-200 text-gray-600"
@@ -445,17 +463,17 @@ function ApplyContent() {
                       {s.step}
                     </div>
                     <p className="text-xs text-gray-600 text-center whitespace-nowrap">{s.label}</p>
-                    {idx < 3 && (
-                      <div
-                        className={`absolute w-12 h-0.5 mt-4 ${
-                          isActive ? "bg-blue-600" : "bg-gray-200"
-                        }`}
-                        style={{ left: `calc(${(idx + 0.5) * 25}% + 20px)` }}
-                      />
-                    )}
                   </div>
                 );
               })}
+              {/* Progress line */}
+              <div className="absolute top-4 left-0 right-0 h-0.5 bg-gray-200 -z-0" />
+              <div
+                className="absolute top-4 left-0 h-0.5 bg-blue-600 -z-0 transition-all"
+                style={{
+                  width: `${((STEP_INDEX[myApplication.status] - 1) * 33.33 + 16.66)}%`,
+                }}
+              />
             </div>
           </div>
         </div>

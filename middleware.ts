@@ -36,6 +36,11 @@ export async function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 
+  // /mypage → /apply にリダイレクト（ページ統合）
+  if (pathname === "/mypage") {
+    return NextResponse.redirect(new URL("/apply", request.url));
+  }
+
   // 未ログイン → /login へリダイレクト
   if (!user && !isPublic) {
     return NextResponse.redirect(new URL("/login", request.url));
@@ -50,7 +55,7 @@ export async function middleware(request: NextRequest) {
       .single();
 
     const dest =
-      profile?.role === "applicant" ? "/mypage" : "/admin";
+      profile?.role === "applicant" ? "/apply" : "/admin";
     return NextResponse.redirect(new URL(dest, request.url));
   }
 
@@ -63,7 +68,7 @@ export async function middleware(request: NextRequest) {
       .single();
 
     if (profile?.role === "applicant") {
-      return NextResponse.redirect(new URL("/mypage", request.url));
+      return NextResponse.redirect(new URL("/apply", request.url));
     }
   }
 
