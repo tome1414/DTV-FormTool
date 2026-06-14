@@ -47,13 +47,15 @@ function ApplyContent() {
   const { setAutoWarning, updateDocument, myApplication } = useStore();
 
   const [showWelcome, setShowWelcome] = useState(false);
-  const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({ passport: true });
+  const [openKeys, setOpenKeys] = useState<Record<string, boolean>>({ passport: true, bankStatementHistory: true });
   const [uploads, setUploads] = useState<Record<string, UploadedFile | null>>({});
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState<Record<string, "upload" | "preview">>({});
   const [submitted, setSubmitted] = useState(false);
-  const [bankHistoryPages, setBankHistoryPages] = useState<PageFile[]>([]);
+  const [bankHistoryPages, setBankHistoryPages] = useState<PageFile[]>([
+    { id: "page_initial", file: null },
+  ]);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const consulateInfo = user?.consulateId ? findConsulateById(user.consulateId) : null;
