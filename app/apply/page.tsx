@@ -59,14 +59,15 @@ interface DocConfig {
   required: boolean;
   hasNote: boolean;
   showGuide?: boolean;
+  multiPage?: boolean;
 }
 
 const DOC_CONFIGS: DocConfig[] = [
   { key: "passport", required: true, hasNote: true },
   { key: "bankStatement", required: true, hasNote: true },
-  { key: "bankStatementHistory", required: true, hasNote: true },
+  { key: "bankStatementHistory", required: true, hasNote: true, multiPage: true },
   { key: "photo", required: true, hasNote: true, showGuide: true },
-  { key: "driverLicense", required: true, hasNote: true },
+  { key: "driverLicense", required: true, hasNote: true, multiPage: true },
 ];
 
 function ApplyContent() {
@@ -82,6 +83,7 @@ function ApplyContent() {
   const [activeTab, setActiveTab] = useState<Record<string, "upload" | "preview">>({});
   const [submitted, setSubmitted] = useState(false);
   const [bankHistoryPages, setBankHistoryPages] = useState<PageFile[]>([]);
+  const [driverLicensePages, setDriverLicensePages] = useState<PageFile[]>([]);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const consulateInfo = user?.consulateId ? findConsulateById(user.consulateId) : null;
@@ -247,10 +249,73 @@ function ApplyContent() {
     }
   };
 
+  // driverLicense 複数ページ操作
+  const handleAddDriverPage = () => {
+    setDriverLicensePages((prev) => [
+      ...prev,
+      { id: `page_${Date.now()}`, file: null },
+    ]);
+  };
+
+  const handleRemoveDriverPage = (pageId: string) => {
+    const page = driverLicensePages.find((p) => p.id === pageId);
+    if (page?.storagePath) {
+      fetch(`/api/files?path=${encodeURIComponent(page.storagePath)}`, {
+        method: "DELETE",
+      }).catch(console.error);
+    }
+    setDriverLicensePages((prev) => prev.filter((p) => p.id !== pageId));
+    if (driverLicensePages.filter((p) => p.id !== pageId).length === 0 && myApplication) {
+      updateDocument(myApplication.id, "driverLicense", false);
+    }
+  };
+
+  const handleUploadDriverPage = async (pageId: string, file: File) => {
+    if (!myApplication) return;
+
+    setDriverLicensePages((prev) =>
+      prev.map((p) => (p.id === pageId ? { ...p, isUploading: true } : p))
+    );
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("applicationId", myApplication.id);
+      formData.append("documentKey", "driverLicense");
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (res.ok) {
+        setDriverLicensePages((prev) =>
+          prev.map((p) =>
+            p.id === pageId ? { ...p, file, storagePath: json.path, isUploading: false } : p
+          )
+        );
+        if (driverLicensePages.some((p) => p.storagePath)) {
+          updateDocument(myApplication.id, "driverLicense", true, json.path);
+        }
+      } else {
+        setUploadError(`アップロードエラー: ${json.error ?? res.status}`);
+        setDriverLicensePages((prev) =>
+          prev.map((p) => (p.id === pageId ? { ...p, isUploading: false } : p))
+        );
+      }
+    } catch (e) {
+      setUploadError(
+        `ネットワークエラー: ${e instanceof Error ? e.message : "不明"}`
+      );
+      setDriverLicensePages((prev) =>
+        prev.map((p) => (p.id === pageId ? { ...p, isUploading: false } : p))
+      );
+    }
+  };
+
   const requiredKeys = DOC_CONFIGS.filter((d) => d.required).map((d) => d.key);
   const uploadedRequired = requiredKeys.filter((k) => {
     if (k === "bankStatementHistory") {
       return bankHistoryPages.some((p) => p.storagePath);
+    }
+    if (k === "driverLicense") {
+      return driverLicensePages.some((p) => p.storagePath);
     }
     return uploads[k];
   });
@@ -563,7 +628,7 @@ function ApplyContent() {
                     </div>
                   )}
 
-                  {/* Multi-page upload for bankStatementHistory */}
+                  {/* Multi-page upload for bankStatementHistory and driverLicense */}
                   {doc.key === "bankStatementHistory" ? (
                     <div className="mt-3">
                       <MultiPageUpload
@@ -571,6 +636,18 @@ function ApplyContent() {
                         onAddPage={handleAddBankPage}
                         onRemovePage={handleRemoveBankPage}
                         onUploadPage={handleUploadBankPage}
+                        maxPages={30}
+                        disabled={false}
+                        t={t}
+                      />
+                    </div>
+                  ) : doc.key === "driverLicense" ? (
+                    <div className="mt-3">
+                      <MultiPageUpload
+                        pages={driverLicensePages}
+                        onAddPage={handleAddDriverPage}
+                        onRemovePage={handleRemoveDriverPage}
+                        onUploadPage={handleUploadDriverPage}
                         maxPages={30}
                         disabled={false}
                         t={t}

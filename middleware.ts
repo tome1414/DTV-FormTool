@@ -37,7 +37,7 @@ export async function middleware(request: NextRequest) {
   const isPublic = PUBLIC_PATHS.some((p) => pathname.startsWith(p));
 
   // /mypage → /apply にリダイレクト（ページ統合）
-  if (pathname === "/mypage") {
+  if (pathname.startsWith("/mypage")) {
     return NextResponse.redirect(new URL("/apply", request.url));
   }
 
