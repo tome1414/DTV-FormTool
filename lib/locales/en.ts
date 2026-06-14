@@ -37,6 +37,7 @@ const en = {
   docs: {
     passport: "Passport Photo Page",
     bankStatement: "Bank Statement",
+    bankStatementHistory: "Bank Transaction History (Last 3 Months)",
     photo: "Portrait Photo",
     driverLicense: "Proof of Presence at Application Location",
     driverLicense_note: "Upload a document proving your legal presence at the location of the consulate where you are applying. From your home country, a driver's license or utility bill is accepted. From a third country, a valid visa, hotel receipt, or onward flight ticket may be accepted, but requirements vary by consulate. Please confirm with the specific consulate before applying.",
@@ -49,6 +50,8 @@ const en = {
       "If scanned, please trim the margins. Excess whitespace can cause read errors on the application site.",
     bankStatement_note:
       "DTV requirement: Balance of at least 500,000 THB (approx. 2,000,000 JPY) required.",
+    bankStatementHistory_note:
+      "Bank transaction history for the last 3 months. This shows your financial activity and stability.",
     photo_note:
       "4.5cm (H) × 3.5cm (W), white background, facing forward. No hats or sunglasses.",
   },

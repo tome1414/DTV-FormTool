@@ -27,6 +27,7 @@ interface DocConfig {
 const DOC_CONFIGS: DocConfig[] = [
   { key: "passport", required: true, hasNote: true },
   { key: "bankStatement", required: true, hasNote: true },
+  { key: "bankStatementHistory", required: true, hasNote: true },
   { key: "photo", required: true, hasNote: true, showGuide: true },
   { key: "driverLicense", required: true, hasNote: true },
 ];

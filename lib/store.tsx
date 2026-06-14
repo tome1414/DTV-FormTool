@@ -19,6 +19,7 @@ export interface StatusHistoryEntry {
 export type DocumentKey =
   | "passport"
   | "bankStatement"
+  | "bankStatementHistory"
   | "photo"
   | "driverLicense"
   | "flightTicket"
@@ -62,7 +63,7 @@ interface StoreContextType {
 }
 
 const DOCUMENT_KEYS: DocumentKey[] = [
-  "passport", "bankStatement", "photo", "driverLicense",
+  "passport", "bankStatement", "bankStatementHistory", "photo", "driverLicense",
   "flightTicket", "pgaLicense", "acceptanceLetter", "invoice", "existingPdfBundle",
 ];
 

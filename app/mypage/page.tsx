@@ -37,6 +37,7 @@ const STEP_INDEX: Record<ApplicationStatus, number> = {
 const DOC_KEYS: Array<{ key: DocumentKey; required: boolean }> = [
   { key: "passport", required: true },
   { key: "bankStatement", required: true },
+  { key: "bankStatementHistory", required: true },
   { key: "photo", required: true },
   { key: "driverLicense", required: true },
 ];
@@ -44,6 +45,7 @@ const DOC_KEYS: Array<{ key: DocumentKey; required: boolean }> = [
 const DOC_NOTE_KEYS: Partial<Record<DocumentKey, string>> = {
   passport: "docs.passport_note",
   bankStatement: "docs.bankStatement_note",
+  bankStatementHistory: "docs.bankStatementHistory_note",
   photo: "docs.photo_note",
   driverLicense: "docs.driverLicense_note",
 };

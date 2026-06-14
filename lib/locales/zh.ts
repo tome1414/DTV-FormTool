@@ -37,6 +37,7 @@ const zh = {
   docs: {
     passport: "护照照片页",
     bankStatement: "银行存款证明",
+    bankStatementHistory: "银行账户交易记录（近3个月内）",
     photo: "证件照片",
     driverLicense: "申请地点居留证明",
     driverLicense_note: "请上传证明您在申请领事馆所在地合法居留的文件。在本国申请时，驾照或水电费账单均有效。在第三国申请时，有效签证、酒店收据或泰国机票可能被接受，但各领事馆要求不同，请提前确认。",
@@ -49,6 +50,8 @@ const zh = {
       "如果是扫描件，请裁剪多余的白边，否则可能导致申请网站读取错误。",
     bankStatement_note:
       "DTV要求：银行存款余额须达50万泰铢（约人民币10万元）以上。",
+    bankStatementHistory_note:
+      "银行过去3个月的交易记录。如有多页，请上传全部。",
     photo_note:
       "尺寸：高4.5cm × 宽3.5cm，白色背景，正面免冠照片，不得戴帽或墨镜。",
   },
