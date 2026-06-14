@@ -553,24 +553,61 @@ function ApplyContent() {
         </div>
       )}
 
-      {/* Progress */}
-      <div className="bg-white rounded-xl border border-gray-200 p-4 mb-6 shadow-sm">
-        <div className="flex justify-between text-sm mb-2">
-          <span className="text-gray-600">{t("apply.progress_label")}</span>
-          <span className="font-semibold text-blue-700">
-            {t("apply.progress_count", {
-              uploaded: uploadedRequired.length,
-              total: requiredKeys.length,
+      {/* アップロード済み書類一覧 */}
+      {myApplication && (
+        <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-4 mb-4">
+          <p className="text-xs font-semibold text-gray-500 mb-3">書類アップロード状況</p>
+          <div className="space-y-0">
+            {DOC_CONFIGS.map((doc) => {
+              const isMultiPage = doc.multiPage;
+              const pages = doc.key === "bankStatementHistory" ? bankHistoryPages : driverLicensePages;
+              const uploadedCount = isMultiPage ? pages.filter((p) => p.storagePath).length : 0;
+              const isUploaded = isMultiPage ? uploadedCount > 0 : !!uploads[doc.key];
+              return (
+                <div
+                  key={doc.key}
+                  className="flex items-center justify-between py-2.5 border-b border-gray-100 last:border-0"
+                >
+                  <div className="flex items-center gap-2.5">
+                    {isUploaded ? (
+                      <span className="w-4 h-4 rounded-full bg-green-500 flex items-center justify-center text-white text-[10px] font-bold flex-shrink-0">✓</span>
+                    ) : (
+                      <span className={`w-4 h-4 rounded-full border-2 flex-shrink-0 ${doc.required ? "border-red-400" : "border-gray-300"}`} />
+                    )}
+                    <span className="text-sm text-gray-700">{t(`docs.${doc.key}`)}</span>
+                    {doc.required && !isUploaded && (
+                      <span className="text-[10px] bg-red-100 text-red-500 px-1.5 py-0.5 rounded-full">必須</span>
+                    )}
+                  </div>
+                  <span className={`text-xs font-medium flex-shrink-0 ${isUploaded ? "text-green-600" : "text-gray-400"}`}>
+                    {isUploaded
+                      ? isMultiPage
+                        ? `${uploadedCount}ページ済み`
+                        : "アップロード済み"
+                      : "未アップロード"}
+                  </span>
+                </div>
+              );
             })}
-          </span>
+          </div>
+
+          {/* プログレスバー */}
+          <div className="mt-3 pt-3 border-t border-gray-100">
+            <div className="flex justify-between text-xs mb-1.5">
+              <span className="text-gray-500">{t("apply.progress_label")}</span>
+              <span className="font-semibold text-blue-700">
+                {uploadedRequired.length} / {requiredKeys.length}
+              </span>
+            </div>
+            <div className="w-full bg-gray-200 rounded-full h-2">
+              <div
+                className="bg-blue-600 h-2 rounded-full transition-all duration-500"
+                style={{ width: `${progress}%` }}
+              />
+            </div>
+          </div>
         </div>
-        <div className="w-full bg-gray-200 rounded-full h-2.5">
-          <div
-            className="bg-blue-600 h-2.5 rounded-full transition-all duration-500"
-            style={{ width: `${progress}%` }}
-          />
-        </div>
-      </div>
+      )}
 
       {/* Accordion Cards */}
       <div className="space-y-3">
@@ -776,6 +813,11 @@ function ApplyContent() {
 
       {/* Submit */}
       <div className="mt-6">
+        {!canSubmit && uploadedRequired.length > 0 && (
+          <p className="text-xs text-gray-500 text-center mb-2">
+            書類は1件ずつアップロードできます。全件揃ったら申請ボタンが有効になります。
+          </p>
+        )}
         <button
           disabled={!canSubmit}
           onClick={() => setSubmitted(true)}
@@ -787,9 +829,11 @@ function ApplyContent() {
         >
           {canSubmit
             ? t("apply.submit_ready")
-            : t("apply.submit_pending", {
-                count: requiredKeys.length - uploadedRequired.length,
-              })}
+            : uploadedRequired.length === 0
+              ? "書類をアップロードして申請を開始してください"
+              : t("apply.submit_pending", {
+                  count: requiredKeys.length - uploadedRequired.length,
+                })}
         </button>
       </div>
 
