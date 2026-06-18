@@ -158,8 +158,21 @@ function ApplyContent() {
     setIsEditingProfile(false);
   };
 
-  const toggle = (key: string) =>
-    setOpenKeys((prev) => ({ ...prev, [key]: !prev[key] }));
+  const toggle = (key: string) => {
+    setOpenKeys((prev) => {
+      const willOpen = !prev[key];
+      // 多ページ書類を開いたとき、ページが0件なら1ページ目を自動追加
+      if (willOpen) {
+        if (key === "bankStatementHistory" && bankHistoryPages.length === 0) {
+          setBankHistoryPages([{ id: `page_${Date.now()}`, file: null }]);
+        }
+        if (key === "driverLicense" && driverLicensePages.length === 0) {
+          setDriverLicensePages([{ id: `page_${Date.now()}`, file: null }]);
+        }
+      }
+      return { ...prev, [key]: willOpen };
+    });
+  };
 
   const handleFile = async (key: string, file: File) => {
     const isImage = file.type.startsWith("image/");
@@ -846,31 +859,6 @@ function ApplyContent() {
         })}
       </div>
 
-      {/* Submit */}
-      <div className="mt-6">
-        {!canSubmit && uploadedRequired.length > 0 && (
-          <p className="text-xs text-gray-500 text-center mb-2">
-            書類は1件ずつアップロードできます。全件揃ったら申請ボタンが有効になります。
-          </p>
-        )}
-        <button
-          disabled={!canSubmit}
-          onClick={() => setSubmitted(true)}
-          className={`w-full py-3 rounded-xl font-semibold text-white transition-colors ${
-            canSubmit
-              ? "bg-blue-600 hover:bg-blue-700 shadow-md"
-              : "bg-gray-300 cursor-not-allowed"
-          }`}
-        >
-          {canSubmit
-            ? t("apply.submit_ready")
-            : uploadedRequired.length === 0
-              ? "書類をアップロードして申請を開始してください"
-              : t("apply.submit_pending", {
-                  count: requiredKeys.length - uploadedRequired.length,
-                })}
-        </button>
-      </div>
 
       {/* ウェルカムモーダル（初回登録時のみ） */}
       {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
