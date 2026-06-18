@@ -10,6 +10,7 @@ import { useStore } from "@/lib/store";
 import { checkPassportMargin, checkPhotoBackground } from "@/lib/imageAnalysis";
 import { CONSULATE_REGIONS, findConsulateById, findConsulateLocation } from "@/lib/consulateData";
 import NationalitySelect from "@/components/NationalitySelect";
+import { COUNTRIES } from "@/lib/countryData";
 import AuthGuard from "@/components/AuthGuard";
 import { ApplicationStatus } from "@/lib/store";
 
@@ -71,7 +72,7 @@ const DOC_CONFIGS: DocConfig[] = [
 ];
 
 function ApplyContent() {
-  const { t } = useI18n();
+  const { t, lang } = useI18n();
   const { user, updateProfile } = useAuth();
   const { setAutoWarning, updateDocument, myApplication } = useStore();
 
@@ -88,6 +89,15 @@ function ApplyContent() {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
 
   const consulateInfo = user?.consulateId ? findConsulateById(user.consulateId) : null;
+
+  // 国籍を表示言語に合わせて変換（DBはJA保存）
+  const displayNationality = (jaName: string) => {
+    if (lang === "ja") return jaName;
+    return COUNTRIES.find((c) => c.ja === jaName)?.en ?? jaName;
+  };
+  // 領事館名を表示言語に合わせて選択
+  const consulateName = (info: NonNullable<typeof consulateInfo>) =>
+    lang === "ja" ? info.name_ja : info.name_en;
 
   // 初回登録後のウェルカムモーダル（localStorageフラグで1回だけ表示）
   useEffect(() => {
@@ -390,7 +400,7 @@ function ApplyContent() {
           <p className="text-gray-500 text-sm mt-2">{t("apply.success_desc")}</p>
           {consulateInfo && (
             <p className="text-gray-400 text-xs mt-3">
-              申請先：{consulateInfo.name_ja}
+              {t("register.consulate")}：{consulateName(consulateInfo)}
             </p>
           )}
         </div>
@@ -465,7 +475,7 @@ function ApplyContent() {
                 </select>
               </div>
               {editConsulateInfo && (
-                <p className="mt-1.5 text-xs text-blue-700 font-medium">{editConsulateInfo.name_ja}</p>
+                <p className="mt-1.5 text-xs text-blue-700 font-medium">{consulateName(editConsulateInfo)}</p>
               )}
             </div>
 
@@ -492,15 +502,15 @@ function ApplyContent() {
           <div className="space-y-2">
             <div className="flex items-center gap-3">
               <span className="text-xs text-gray-500 w-16 shrink-0">{t("register.nationality")}</span>
-              <span className="text-sm font-medium text-gray-800">{user.nationality}</span>
+              <span className="text-sm font-medium text-gray-800">{displayNationality(user.nationality)}</span>
             </div>
             <div className="flex items-start gap-3">
               <span className="text-xs text-gray-500 w-16 shrink-0 mt-0.5">{t("register.consulate")}</span>
               <div>
                 {consulateInfo ? (
                   <>
-                    <p className="text-sm font-medium text-gray-800">{consulateInfo.name_ja}</p>
-                    <p className="text-xs text-gray-400">{consulateInfo.name_en}</p>
+                    <p className="text-sm font-medium text-gray-800">{consulateName(consulateInfo)}</p>
+                    <p className="text-xs text-gray-400">{lang === "ja" ? consulateInfo.name_en : consulateInfo.name_ja}</p>
                     {consulateInfo.note && (
                       <p className="text-xs text-yellow-700 bg-yellow-50 border border-yellow-200 rounded px-2 py-1 mt-1.5">
                         ⚠️ {consulateInfo.note}
