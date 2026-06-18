@@ -63,13 +63,41 @@ export async function DELETE(request: NextRequest) {
     return NextResponse.json({ error: storageError.message }, { status: 500 });
   }
 
-  await supabaseAdmin
-    .from("documents")
-    .update({
-      storage_path: null, file_name: null, mime_type: null,
-      file_size: null, is_uploaded: false, is_approved: false, uploaded_at: null,
-    })
-    .eq("storage_path", path);
+  // path形式: {applicationId}/{documentKey}/{filename}
+  const parts = path.split("/");
+  const docKey = parts[1] ?? "";
+  const MULTI_PAGE_KEYS = ["bankStatementHistory", "driverLicense"];
+
+  if (MULTI_PAGE_KEYS.includes(docKey)) {
+    // storage_paths から該当パスを除去し、残りがなければ is_uploaded = false
+    const { data: existing } = await supabaseAdmin
+      .from("documents")
+      .select("storage_paths")
+      .eq("storage_path", path)
+      .maybeSingle();
+
+    const remaining: string[] = Array.isArray(existing?.storage_paths)
+      ? (existing.storage_paths as string[]).filter((p: string) => p !== path)
+      : [];
+
+    await supabaseAdmin
+      .from("documents")
+      .update({
+        storage_paths: remaining.length > 0 ? remaining : null,
+        storage_path: remaining.length > 0 ? remaining[remaining.length - 1] : null,
+        is_uploaded: remaining.length > 0,
+        ...(remaining.length === 0 ? { file_name: null, mime_type: null, file_size: null, is_approved: false, uploaded_at: null } : {}),
+      })
+      .eq("storage_path", path);
+  } else {
+    await supabaseAdmin
+      .from("documents")
+      .update({
+        storage_path: null, file_name: null, mime_type: null,
+        file_size: null, is_uploaded: false, is_approved: false, uploaded_at: null,
+      })
+      .eq("storage_path", path);
+  }
 
   return NextResponse.json({ success: true }, { status: 200 });
 }

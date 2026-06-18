@@ -54,20 +54,16 @@ export default function MultiPageUpload({
               </div>
 
               <div className="flex-1 min-w-0">
-                <p className="text-sm text-gray-700">
+                <p className="text-sm text-gray-700 font-medium">
+                  {idx + 1}ページ目
+                </p>
+                <p className="text-xs mt-0.5">
                   {isUploaded ? (
-                    <>
-                      <span className="font-medium">Page {idx + 1}</span>
-                      <span className="text-xs text-gray-500 ml-2">✓ {t("common.uploaded")}</span>
-                    </>
+                    <span className="text-green-600">✓ {t("mypage.uploaded")}</span>
                   ) : page.isUploading ? (
-                    <>
-                      <span className="text-xs text-gray-500">アップロード中...</span>
-                    </>
+                    <span className="text-gray-400">アップロード中...</span>
                   ) : (
-                    <>
-                      <span className="text-gray-500">Page {idx + 1}</span>
-                    </>
+                    <span className="text-gray-400">未アップロード</span>
                   )}
                 </p>
               </div>

@@ -76,5 +76,23 @@ export async function POST(request: NextRequest) {
     );
   }
 
+  // 複数ページ対応書類は storage_paths JSONB に追記
+  const MULTI_PAGE_KEYS = ["bankStatementHistory", "driverLicense"];
+  if (MULTI_PAGE_KEYS.includes(documentKey)) {
+    const { data: existing } = await supabaseAdmin
+      .from("documents")
+      .select("storage_paths")
+      .eq("application_id", applicationId)
+      .eq("document_key", documentKey)
+      .single();
+
+    const currentPaths: string[] = Array.isArray(existing?.storage_paths) ? existing.storage_paths : [];
+    await supabaseAdmin
+      .from("documents")
+      .update({ storage_paths: [...currentPaths, uploadData.path] })
+      .eq("application_id", applicationId)
+      .eq("document_key", documentKey);
+  }
+
   return NextResponse.json({ path: uploadData.path }, { status: 200 });
 }

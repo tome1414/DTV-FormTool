@@ -2,7 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { supabaseAdmin, ApplicationStatus } from "@/lib/supabase";
 import { getSessionUser, isAdmin, unauthorized } from "@/lib/api-auth";
 
-const DOC_SELECT = `document_key, is_uploaded, is_approved, warning, auto_warning, storage_path, file_name, mime_type, uploaded_at`;
+const DOC_SELECT = `document_key, is_uploaded, is_approved, warning, auto_warning, storage_path, storage_paths, file_name, mime_type, uploaded_at`;
 
 // GET /api/applications
 export async function GET(request: NextRequest) {

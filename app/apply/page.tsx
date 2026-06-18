@@ -96,6 +96,41 @@ function ApplyContent() {
     }
   }, []);
 
+  // myApplication ロード時に uploads/multiPage state を初期化
+  useEffect(() => {
+    if (!myApplication) return;
+
+    // シングルページ書類
+    const initialUploads: Record<string, UploadedFile | null> = {};
+    DOC_CONFIGS.forEach((doc) => {
+      if (!doc.multiPage && myApplication.documents[doc.key as import("@/lib/store").DocumentKey]) {
+        const storagePath = myApplication.documentPaths?.[doc.key as import("@/lib/store").DocumentKey];
+        initialUploads[doc.key] = {
+          file: new File([], storagePath?.split("/").pop() ?? doc.key),
+          preview: null,
+          storagePath,
+        };
+      }
+    });
+    setUploads(initialUploads);
+
+    // 複数ページ書類: storage_paths から復元
+    const bankPaths = myApplication.documentStoragePaths?.bankStatementHistory ?? [];
+    if (bankPaths.length > 0) {
+      setBankHistoryPages(
+        bankPaths.map((p, i) => ({ id: `loaded_bank_${i}`, file: null, storagePath: p }))
+      );
+    }
+
+    const driverPaths = myApplication.documentStoragePaths?.driverLicense ?? [];
+    if (driverPaths.length > 0) {
+      setDriverLicensePages(
+        driverPaths.map((p, i) => ({ id: `loaded_driver_${i}`, file: null, storagePath: p }))
+      );
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [myApplication?.id]);
+
   // ── Inline profile edit state ──
   const [isEditingProfile, setIsEditingProfile] = useState(false);
   const [editNationality, setEditNationality] = useState("");

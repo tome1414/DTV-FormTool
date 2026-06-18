@@ -40,6 +40,7 @@ export interface Applicant {
   documentAutoWarnings?: Partial<Record<DocumentKey, string>>;
   documentApprovals?: Partial<Record<DocumentKey, boolean>>;
   documentPaths?: Partial<Record<DocumentKey, string>>;
+  documentStoragePaths?: Partial<Record<DocumentKey, string[]>>;
   notes?: string;
   nationality?: string;
   consulateId?: string;
@@ -80,6 +81,7 @@ function mapDbToApplicant(app: Record<string, any>): Applicant {
   const documentAutoWarnings: Partial<Record<DocumentKey, string>> = {};
   const documentApprovals: Partial<Record<DocumentKey, boolean>> = {};
   const documentPaths: Partial<Record<DocumentKey, string>> = {};
+  const documentStoragePaths: Partial<Record<DocumentKey, string[]>> = {};
 
   for (const doc of docs) {
     const key = doc.document_key as DocumentKey;
@@ -88,6 +90,8 @@ function mapDbToApplicant(app: Record<string, any>): Applicant {
     if (doc.auto_warning)  documentAutoWarnings[key]  = doc.auto_warning;
     if (doc.is_approved)   documentApprovals[key]     = true;
     if (doc.storage_path)  documentPaths[key]         = doc.storage_path;
+    if (Array.isArray(doc.storage_paths) && doc.storage_paths.length > 0)
+      documentStoragePaths[key] = doc.storage_paths as string[];
   }
 
   const statusHistory: StatusHistoryEntry[] = ((app.status_history ?? []) as Record<string, string>[])
@@ -109,6 +113,7 @@ function mapDbToApplicant(app: Record<string, any>): Applicant {
     documentAutoWarnings: Object.keys(documentAutoWarnings).length > 0 ? documentAutoWarnings : undefined,
     documentApprovals:    Object.keys(documentApprovals).length    > 0 ? documentApprovals    : undefined,
     documentPaths:        Object.keys(documentPaths).length        > 0 ? documentPaths        : undefined,
+    documentStoragePaths: Object.keys(documentStoragePaths).length > 0 ? documentStoragePaths : undefined,
     notes:       app.notes       ?? undefined,
     nationality: app.nationality ?? undefined,
     consulateId: app.consulate_id ?? undefined,
