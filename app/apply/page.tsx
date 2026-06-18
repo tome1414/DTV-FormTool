@@ -174,39 +174,13 @@ function ApplyContent() {
     });
   };
 
-  const handleFile = async (key: string, file: File) => {
+  // ファイル選択時：ローカルプレビューのみ（サーバー未送信）
+  const handleFileSelect = (key: string, file: File) => {
     const isImage = file.type.startsWith("image/");
     const preview = isImage ? URL.createObjectURL(file) : null;
-    setUploads((prev) => ({ ...prev, [key]: { file, preview } }));
-    setActiveTab((prev) => ({ ...prev, [key]: "preview" }));
+    setUploads((prev) => ({ ...prev, [key]: { file, preview, storagePath: undefined } }));
 
-    // Upload to Supabase Storage
-    if (!myApplication) {
-      setUploadError("申請情報が読み込まれていません。ページを再読み込みしてください。");
-      return;
-    }
-    setUploading((prev) => ({ ...prev, [key]: true }));
-    setUploadError(null);
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-      formData.append("applicationId", myApplication.id);
-      formData.append("documentKey", key);
-      const res = await fetch("/api/upload", { method: "POST", body: formData });
-      const json = await res.json();
-      if (res.ok) {
-        setUploads((prev) => prev[key] ? { ...prev, [key]: { ...prev[key]!, storagePath: json.path } } : prev);
-        updateDocument(myApplication.id, key as import("@/lib/store").DocumentKey, true, json.path);
-      } else {
-        setUploadError(`アップロードエラー: ${json.error ?? res.status}`);
-      }
-    } catch (e) {
-      setUploadError(`ネットワークエラー: ${e instanceof Error ? e.message : "不明"}`);
-    } finally {
-      setUploading((prev) => ({ ...prev, [key]: false }));
-    }
-
-    // Run Canvas API silently — result surfaces in admin panel only
+    // Canvas チェックはバックグラウンドで実行
     if (isImage && myApplication && (key === "passport" || key === "photo")) {
       const check = key === "passport" ? checkPassportMargin : checkPhotoBackground;
       check(file).then((warning) => {
@@ -215,10 +189,36 @@ function ApplyContent() {
     }
   };
 
+  // 「提出する」ボタン押下時：実際にサーバーへアップロード
+  const handleSubmitDoc = async (key: string) => {
+    const uploadedFile = uploads[key];
+    if (!uploadedFile || !myApplication) return;
+    setUploading((prev) => ({ ...prev, [key]: true }));
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", uploadedFile.file);
+      formData.append("applicationId", myApplication.id);
+      formData.append("documentKey", key);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (res.ok) {
+        setUploads((prev) => prev[key] ? { ...prev, [key]: { ...prev[key]!, storagePath: json.path } } : prev);
+        updateDocument(myApplication.id, key as import("@/lib/store").DocumentKey, true, json.path);
+      } else {
+        setUploadError(`提出エラー: ${json.error ?? res.status}`);
+      }
+    } catch (e) {
+      setUploadError(`ネットワークエラー: ${e instanceof Error ? e.message : "不明"}`);
+    } finally {
+      setUploading((prev) => ({ ...prev, [key]: false }));
+    }
+  };
+
   const handleDrop = (key: string, e: React.DragEvent) => {
     e.preventDefault();
     const file = e.dataTransfer.files[0];
-    if (file) handleFile(key, file);
+    if (file) handleFileSelect(key, file);
   };
 
   const handleRemove = (key: string) => {
@@ -360,12 +360,12 @@ function ApplyContent() {
   const requiredKeys = DOC_CONFIGS.filter((d) => d.required).map((d) => d.key);
   const uploadedRequired = requiredKeys.filter((k) => {
     if (k === "bankStatementHistory") {
-      return bankHistoryPages.some((p) => p.storagePath);
+      return bankHistoryPages.some((p) => p.storagePath) || !!myApplication?.documents.bankStatementHistory;
     }
     if (k === "driverLicense") {
-      return driverLicensePages.some((p) => p.storagePath);
+      return driverLicensePages.some((p) => p.storagePath) || !!myApplication?.documents.driverLicense;
     }
-    return uploads[k];
+    return !!uploads[k]?.storagePath;
   });
   const progress = Math.round((uploadedRequired.length / requiredKeys.length) * 100);
   const canSubmit = uploadedRequired.length === requiredKeys.length;
@@ -610,7 +610,9 @@ function ApplyContent() {
               const isMultiPage = doc.multiPage;
               const pages = doc.key === "bankStatementHistory" ? bankHistoryPages : driverLicensePages;
               const uploadedCount = isMultiPage ? pages.filter((p) => p.storagePath).length : 0;
-              const isUploaded = isMultiPage ? uploadedCount > 0 : !!uploads[doc.key];
+              const isUploaded = isMultiPage
+                ? (uploadedCount > 0 || !!myApplication?.documents[doc.key as import("@/lib/store").DocumentKey])
+                : !!uploads[doc.key]?.storagePath;
               return (
                 <div
                   key={doc.key}
@@ -662,9 +664,15 @@ function ApplyContent() {
         {DOC_CONFIGS.map((doc) => {
           const isOpen = openKeys[doc.key];
           const uploaded = uploads[doc.key];
-          const tab = activeTab[doc.key] || "upload";
           const docLabel = t(`docs.${doc.key}`);
           const docNote = doc.hasNote ? t(`docs.${doc.key}_note`) : null;
+
+          // 3状態: 提出済み / 選択中（未提出） / 未選択
+          const multiPages = doc.key === "bankStatementHistory" ? bankHistoryPages : driverLicensePages;
+          const isSubmitted = doc.multiPage
+            ? (multiPages.some((p) => p.storagePath) || !!myApplication?.documents[doc.key as import("@/lib/store").DocumentKey])
+            : !!uploads[doc.key]?.storagePath;
+          const isLocalOnly = !doc.multiPage && !!uploaded && !uploaded.storagePath;
 
           return (
             <div
@@ -679,16 +687,12 @@ function ApplyContent() {
                 <div className="flex items-center gap-3">
                   {uploading[doc.key] ? (
                     <span className="w-5 h-5 rounded-full border-2 border-blue-400 border-t-transparent animate-spin flex-shrink-0" />
-                  ) : uploaded ? (
-                    <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold">
-                      ✓
-                    </span>
+                  ) : isSubmitted ? (
+                    <span className="w-5 h-5 rounded-full bg-green-500 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">✓</span>
+                  ) : isLocalOnly ? (
+                    <span className="w-5 h-5 rounded-full bg-amber-400 flex items-center justify-center text-white text-xs font-bold flex-shrink-0">!</span>
                   ) : (
-                    <span
-                      className={`w-5 h-5 rounded-full border-2 flex items-center justify-center text-xs ${
-                        doc.required ? "border-red-400" : "border-gray-300"
-                      }`}
-                    />
+                    <span className={`w-5 h-5 rounded-full border-2 flex-shrink-0 ${doc.required ? "border-red-400" : "border-gray-300"}`} />
                   )}
                   <span className="font-medium text-gray-800">{docLabel}</span>
                   {doc.required ? (
@@ -713,7 +717,7 @@ function ApplyContent() {
                     </div>
                   )}
 
-                  {/* Multi-page upload for bankStatementHistory and driverLicense */}
+                  {/* 複数ページ書類 */}
                   {doc.key === "bankStatementHistory" ? (
                     <div className="mt-3">
                       <MultiPageUpload
@@ -741,116 +745,129 @@ function ApplyContent() {
                       />
                     </div>
                   ) : (
-                    <>
-                      {/* Tabs */}
-                      {uploaded && (
-                        <div className="flex gap-2 mt-3 mb-3">
-                          <button
-                            onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "upload" }))}
-                            className={`text-sm px-3 py-1 rounded-md border transition-colors ${
-                              tab === "upload"
-                                ? "bg-blue-600 text-white border-blue-600"
-                                : "border-gray-300 text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {t("common.upload")}
-                          </button>
-                          <button
-                            onClick={() => setActiveTab((p) => ({ ...p, [doc.key]: "preview" }))}
-                            className={`text-sm px-3 py-1 rounded-md border transition-colors ${
-                              tab === "preview"
-                                ? "bg-blue-600 text-white border-blue-600"
-                                : "border-gray-300 text-gray-600 hover:bg-gray-50"
-                            }`}
-                          >
-                            {t("common.preview")}
-                          </button>
-                        </div>
-                      )}
-
-                      {/* Upload Area */}
-                      {(!uploaded || tab === "upload") && (
+                    <div className="mt-3">
+                      {/* 状態1: 未選択 → ドロップエリア */}
+                      {!uploaded && (
                         <div
-                          className="mt-3 border-2 border-dashed border-gray-300 rounded-lg p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
+                          className="border-2 border-dashed border-gray-300 rounded-xl p-8 text-center hover:border-blue-400 hover:bg-blue-50 transition-colors cursor-pointer"
                           onDragOver={(e) => e.preventDefault()}
                           onDrop={(e) => handleDrop(doc.key, e)}
                           onClick={() => fileRefs.current[doc.key]?.click()}
                         >
                           <div className="text-3xl mb-2">📎</div>
-                          <p className="text-gray-600 text-sm">{t("apply.drag_drop")}</p>
+                          <p className="text-gray-700 text-sm font-medium">{t("apply.drag_drop")}</p>
                           <p className="text-gray-400 text-xs mt-1">{t("apply.file_types")}</p>
-                          <input
-                            ref={(el) => { fileRefs.current[doc.key] = el; }}
-                            type="file"
-                            className="hidden"
-                            accept="image/*,.pdf"
-                            onChange={(e) => {
-                              const file = e.target.files?.[0];
-                              if (file) handleFile(doc.key, file);
-                            }}
-                          />
                         </div>
                       )}
 
-                      {/* Preview Area */}
-                      {uploaded && tab === "preview" && (
-                        <div className="mt-3">
-                          {uploaded.preview ? (
-                            <div className="relative inline-block">
-                              {doc.showGuide && (
-                                <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
-                                  <div
-                                    className="border-2 border-dashed border-blue-500 opacity-60"
-                                    style={{ width: "70px", height: "90px" }}
-                                  />
-                                </div>
-                              )}
-                              <img
-                                src={uploaded.preview}
-                                alt="preview"
-                                className="max-h-64 max-w-full rounded-lg border border-gray-200 object-contain"
-                              />
-                            </div>
-                          ) : (
-                            <div className="bg-gray-50 rounded-lg border border-gray-200 p-4 flex items-center gap-3">
-                              <span className="text-3xl">📄</span>
-                              <div>
-                                <p className="font-medium text-gray-800 text-sm">
-                                  {uploaded.file.name}
-                                </p>
-                                <p className="text-gray-400 text-xs">
-                                  {(uploaded.file.size / 1024).toFixed(1)} KB
-                                </p>
+                      {/* 状態2: 選択済み・未提出 → プレビュー＋警告＋提出ボタン */}
+                      {uploaded && !uploaded.storagePath && (
+                        <div className="space-y-3">
+                          {/* プレビュー */}
+                          <div className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+                            {uploaded.preview ? (
+                              <div className="relative">
+                                {doc.showGuide && (
+                                  <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+                                    <div className="border-2 border-dashed border-blue-500 opacity-60" style={{ width: "70px", height: "90px" }} />
+                                  </div>
+                                )}
+                                <img src={uploaded.preview} alt="preview" className="max-h-56 w-full object-contain" />
                               </div>
-                            </div>
-                          )}
-                          <div className="flex gap-2 mt-3">
+                            ) : (
+                              <div className="flex items-center gap-3 p-4">
+                                <span className="text-3xl">📄</span>
+                                <div>
+                                  <p className="font-medium text-gray-800 text-sm">{uploaded.file.name}</p>
+                                  <p className="text-gray-400 text-xs">{(uploaded.file.size / 1024).toFixed(1)} KB</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {/* 未提出の警告 */}
+                          <div className="flex items-center gap-2 bg-amber-50 border border-amber-200 rounded-lg px-4 py-2.5">
+                            <span className="text-amber-500 text-base flex-shrink-0">⚠️</span>
+                            <p className="text-sm text-amber-800">まだサーバーに提出されていません。下の「提出する」を押してください。</p>
+                          </div>
+                          {/* ボタン群（一列に揃える） */}
+                          <div className="flex gap-2">
                             <button
                               onClick={() => fileRefs.current[doc.key]?.click()}
-                              className="text-sm px-3 py-1.5 border border-blue-400 text-blue-600 rounded-md hover:bg-blue-50 transition-colors"
+                              className="flex-1 py-2.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
                             >
-                              {t("common.replace")}
+                              差し替え
                             </button>
                             <button
-                              onClick={() => handleRemove(doc.key)}
-                              className="text-sm px-3 py-1.5 border border-red-300 text-red-500 rounded-md hover:bg-red-50 transition-colors"
+                              onClick={() => handleSubmitDoc(doc.key)}
+                              disabled={uploading[doc.key]}
+                              className="flex-1 py-2.5 text-sm font-semibold bg-blue-600 hover:bg-blue-700 disabled:bg-blue-300 text-white rounded-lg transition-colors"
                             >
-                              {t("common.delete")}
+                              {uploading[doc.key] ? "提出中..." : "📤 提出する"}
                             </button>
-                            <input
-                              ref={(el) => { fileRefs.current[doc.key] = el; }}
-                              type="file"
-                              className="hidden"
-                              accept="image/*,.pdf"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) handleFile(doc.key, file);
-                              }}
-                            />
                           </div>
                         </div>
                       )}
-                    </>
+
+                      {/* 状態3: 提出済み → プレビュー＋差し替え・削除 */}
+                      {uploaded?.storagePath && (
+                        <div className="space-y-3">
+                          {/* 提出済みバッジ */}
+                          <div className="flex items-center gap-2 bg-green-50 border border-green-200 rounded-lg px-4 py-2.5">
+                            <span className="text-green-500 text-base flex-shrink-0">✅</span>
+                            <p className="text-sm text-green-800 font-medium">提出済み</p>
+                          </div>
+                          {/* プレビュー */}
+                          <div className="rounded-xl border border-gray-200 overflow-hidden bg-gray-50">
+                            {uploaded.preview ? (
+                              <div className="relative">
+                                {doc.showGuide && (
+                                  <div className="absolute inset-0 pointer-events-none z-10 flex items-center justify-center">
+                                    <div className="border-2 border-dashed border-blue-500 opacity-60" style={{ width: "70px", height: "90px" }} />
+                                  </div>
+                                )}
+                                <img src={uploaded.preview} alt="preview" className="max-h-56 w-full object-contain" />
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-3 p-4">
+                                <span className="text-3xl">📄</span>
+                                <div>
+                                  <p className="font-medium text-gray-800 text-sm">{uploaded.file.name}</p>
+                                  <p className="text-gray-400 text-xs">{(uploaded.file.size / 1024).toFixed(1)} KB</p>
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                          {/* ボタン群 */}
+                          <div className="flex gap-2">
+                            <button
+                              onClick={() => fileRefs.current[doc.key]?.click()}
+                              className="flex-1 py-2.5 text-sm border border-gray-300 text-gray-600 rounded-lg hover:bg-gray-50 transition-colors"
+                            >
+                              差し替え
+                            </button>
+                            <button
+                              onClick={() => handleRemove(doc.key)}
+                              className="flex-1 py-2.5 text-sm border border-red-300 text-red-500 rounded-lg hover:bg-red-50 transition-colors"
+                            >
+                              削除
+                            </button>
+                          </div>
+                        </div>
+                      )}
+
+                      {/* ファイル入力（共通） */}
+                      <input
+                        ref={(el) => { fileRefs.current[doc.key] = el; }}
+                        type="file"
+                        className="hidden"
+                        accept="image/*,.pdf"
+                        onChange={(e) => {
+                          const file = e.target.files?.[0];
+                          if (file) handleFileSelect(doc.key, file);
+                          e.target.value = "";
+                        }}
+                      />
+                    </div>
                   )}
                 </div>
               )}
