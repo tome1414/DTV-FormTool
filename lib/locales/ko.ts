@@ -75,6 +75,10 @@ const ko = {
     welcome_note_driver: "영사관 소재지 체류를 증명하는 서류가 필요합니다.",
     success_desc: "서류 확인 후 마이페이지에서 상태를 확인할 수 있습니다.",
     add_page: "페이지 추가",
+    edit: "변경",
+    profile_not_set: "국적 및 영사관이 설정되지 않았습니다.",
+    profile_set_prompt: "여기서 설정하세요",
+    consulate_place: "공관",
   },
   mypage: {
     title: "마이페이지",

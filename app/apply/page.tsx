@@ -408,14 +408,14 @@ function ApplyContent() {
       {/* ── Applicant Info ── */}
       <div className="bg-white rounded-xl border border-gray-200 shadow-sm p-5 mb-6">
         <div className="flex items-center justify-between mb-3">
-          <h2 className="text-sm font-semibold text-gray-700">申請者情報</h2>
+          <h2 className="text-sm font-semibold text-gray-700">{t("register.section_applicant")}</h2>
           {!isEditingProfile && (
             <button
               onClick={startEditProfile}
               className="flex items-center gap-1 text-xs text-blue-500 hover:text-blue-700"
             >
               <Pencil size={12} />
-              変更
+              {t("apply.edit")}
             </button>
           )}
         </div>
@@ -424,19 +424,19 @@ function ApplyContent() {
           /* ── Edit mode ── */
           <div className="space-y-4">
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">国籍</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t("register.nationality")}</label>
               <NationalitySelect value={editNationality} onChange={setEditNationality} />
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-gray-500 mb-1">申請予定の領事館</label>
+              <label className="block text-xs font-medium text-gray-500 mb-1">{t("register.consulate")}</label>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-2">
                 <select
                   value={editRegion}
                   onChange={(e) => { setEditRegion(e.target.value); setEditCountry(""); setEditConsulateId(""); }}
                   className="border border-gray-300 rounded-lg px-2 py-2.5 sm:py-2 text-sm focus:outline-none focus:border-blue-500 bg-white"
                 >
-                  <option value="">地域</option>
+                  <option value="">{t("register.region")}</option>
                   {CONSULATE_REGIONS.map((r) => (
                     <option key={r.id} value={r.id}>{r.label_ja}</option>
                   ))}
@@ -447,7 +447,7 @@ function ApplyContent() {
                   disabled={!editRegion}
                   className="border border-gray-300 rounded-lg px-2 py-2.5 sm:py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                 >
-                  <option value="">国</option>
+                  <option value="">{t("register.country")}</option>
                   {editRegionData?.countries.map((c) => (
                     <option key={c.country_ja} value={c.country_ja}>{c.country_ja}</option>
                   ))}
@@ -458,7 +458,7 @@ function ApplyContent() {
                   disabled={!editCountry}
                   className="border border-gray-300 rounded-lg px-2 py-2.5 sm:py-2 text-sm focus:outline-none focus:border-blue-500 bg-white disabled:bg-gray-50 disabled:text-gray-400"
                 >
-                  <option value="">公館</option>
+                  <option value="">{t("apply.consulate_place")}</option>
                   {editCountryData?.consulates.map((c) => (
                     <option key={c.id} value={c.id}>{c.type}（{c.city_ja}）</option>
                   ))}
@@ -476,14 +476,14 @@ function ApplyContent() {
                 className="flex items-center gap-1.5 text-sm px-4 py-1.5 bg-blue-600 hover:bg-blue-700 disabled:bg-gray-300 disabled:cursor-not-allowed text-white rounded-lg transition-colors font-medium"
               >
                 <Check size={13} />
-                保存
+                {t("common.save")}
               </button>
               <button
                 onClick={() => setIsEditingProfile(false)}
                 className="flex items-center gap-1.5 text-sm px-4 py-1.5 border border-gray-300 text-gray-600 hover:bg-gray-50 rounded-lg transition-colors"
               >
                 <X size={13} />
-                キャンセル
+                {t("common.cancel")}
               </button>
             </div>
           </div>
@@ -491,11 +491,11 @@ function ApplyContent() {
           /* ── Read-only mode ── */
           <div className="space-y-2">
             <div className="flex items-center gap-3">
-              <span className="text-xs text-gray-500 w-16 shrink-0">国籍</span>
+              <span className="text-xs text-gray-500 w-16 shrink-0">{t("register.nationality")}</span>
               <span className="text-sm font-medium text-gray-800">{user.nationality}</span>
             </div>
             <div className="flex items-start gap-3">
-              <span className="text-xs text-gray-500 w-16 shrink-0 mt-0.5">申請先</span>
+              <span className="text-xs text-gray-500 w-16 shrink-0 mt-0.5">{t("register.consulate")}</span>
               <div>
                 {consulateInfo ? (
                   <>
@@ -513,7 +513,7 @@ function ApplyContent() {
                       className="inline-flex items-center gap-1 text-xs text-blue-500 hover:underline mt-1"
                     >
                       <ExternalLink size={10} />
-                      公式サイトで確認
+                      {t("register.official_site")}
                     </a>
                   </>
                 ) : (
@@ -525,9 +525,9 @@ function ApplyContent() {
         ) : (
           /* ── Not set ── */
           <div className="bg-yellow-50 border border-yellow-200 rounded-lg px-4 py-3 text-sm text-yellow-800">
-            国籍・申請先が未設定です。
+            {t("apply.profile_not_set")}
             <button onClick={startEditProfile} className="ml-2 underline font-medium">
-              こちらから設定してください
+              {t("apply.profile_set_prompt")}
             </button>
           </div>
         )}

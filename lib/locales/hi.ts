@@ -75,6 +75,10 @@ const hi = {
     welcome_note_driver: "वाणिज्य दूतावास स्थान पर वैध उपस्थिति का प्रमाण।",
     success_desc: "सत्यापन के बाद, आप मेरे पेज पर अपनी स्थिति देख सकते हैं।",
     add_page: "पृष्ठ जोड़ें",
+    edit: "बदलें",
+    profile_not_set: "राष्ट्रीयता और वाणिज्य दूतावास सेट नहीं है।",
+    profile_set_prompt: "यहाँ सेट करें",
+    consulate_place: "पोस्ट",
   },
   mypage: {
     title: "मेरा पेज",

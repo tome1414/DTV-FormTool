@@ -76,6 +76,10 @@ const en = {
     welcome_note_photo: "4.5×3.5cm, white background, facing forward. No hats.",
     welcome_note_driver: "Proof of legal presence at consulate location.",
     add_page: "Add Page",
+    edit: "Edit",
+    profile_not_set: "Nationality and consulate are not set.",
+    profile_set_prompt: "Click here to set up",
+    consulate_place: "Post",
   },
   mypage: {
     title: "My Page",

@@ -75,6 +75,10 @@ const zh = {
     welcome_note_driver: "需要证明您在领事馆所在地合法居留的文件。",
     success_desc: "文件审核后，请在「我的页面」查看状态。",
     add_page: "添加页面",
+    edit: "变更",
+    profile_not_set: "国籍和领事馆尚未设置。",
+    profile_set_prompt: "请点此设置",
+    consulate_place: "公馆",
   },
   mypage: {
     title: "我的页面",

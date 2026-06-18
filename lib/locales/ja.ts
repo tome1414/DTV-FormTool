@@ -76,6 +76,10 @@ const ja = {
     welcome_note_photo: "縦4.5cm×横3.5cm、白背景、正面向き。帽子・サングラス不可。",
     welcome_note_driver: "申請先領事館での滞在を証明する書類が必要です。",
     add_page: "ページを追加",
+    edit: "変更",
+    profile_not_set: "国籍・申請先が未設定です。",
+    profile_set_prompt: "こちらから設定してください",
+    consulate_place: "公館",
   },
   mypage: {
     title: "マイページ",
