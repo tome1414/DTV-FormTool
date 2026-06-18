@@ -18,8 +18,8 @@ interface MultiPageUploadProps {
   onUploadPage: (pageId: string, file: File) => void;
   maxPages?: number;
   disabled?: boolean;
-  documentKey: string;
-  t: (key: string) => string;
+  documentKey?: string;
+  t?: (key: string) => string;
 }
 
 export default function MultiPageUpload({
@@ -29,8 +29,6 @@ export default function MultiPageUpload({
   onUploadPage,
   maxPages = 30,
   disabled = false,
-  documentKey,
-  t,
 }: MultiPageUploadProps) {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
   // ローカル選択済みファイル（未提出）

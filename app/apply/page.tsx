@@ -80,7 +80,6 @@ function ApplyContent() {
   const [uploads, setUploads] = useState<Record<string, UploadedFile | null>>({});
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState<Record<string, "upload" | "preview">>({});
   const [submitted, setSubmitted] = useState(false);
   const [bankHistoryPages, setBankHistoryPages] = useState<PageFile[]>([]);
   const [driverLicensePages, setDriverLicensePages] = useState<PageFile[]>([]);
@@ -224,7 +223,6 @@ function ApplyContent() {
   const handleRemove = (key: string) => {
     const storagePath = uploads[key]?.storagePath;
     setUploads((prev) => ({ ...prev, [key]: null }));
-    setActiveTab((prev) => ({ ...prev, [key]: "upload" }));
     if (myApplication) {
       setAutoWarning(myApplication.id, key as import("@/lib/store").DocumentKey, null);
       updateDocument(myApplication.id, key as import("@/lib/store").DocumentKey, false);
@@ -368,7 +366,6 @@ function ApplyContent() {
     return !!uploads[k]?.storagePath;
   });
   const progress = Math.round((uploadedRequired.length / requiredKeys.length) * 100);
-  const canSubmit = uploadedRequired.length === requiredKeys.length;
 
   if (submitted) {
     return (
