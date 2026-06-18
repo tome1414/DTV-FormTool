@@ -81,6 +81,8 @@ function ApplyContent() {
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
   const submitted = false;
+  const [previewModal, setPreviewModal] = useState<{ src: string; name: string } | null>(null);
+  const [previewLoading, setPreviewLoading] = useState<string | null>(null);
   const [bankHistoryPages, setBankHistoryPages] = useState<PageFile[]>([]);
   const [driverLicensePages, setDriverLicensePages] = useState<PageFile[]>([]);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
@@ -171,6 +173,17 @@ function ApplyContent() {
       }
       return { ...prev, [key]: willOpen };
     });
+  };
+
+  const handleOpenPreview = async (key: string, storagePath: string, label: string) => {
+    setPreviewLoading(key);
+    try {
+      const res = await fetch(`/api/files?path=${encodeURIComponent(storagePath)}`);
+      const json = await res.json();
+      if (json.url) setPreviewModal({ src: json.url, name: label });
+    } finally {
+      setPreviewLoading(null);
+    }
   };
 
   // ファイル選択時：ローカルプレビューのみ（サーバー未送信）
@@ -825,12 +838,24 @@ function ApplyContent() {
                                 <img src={uploaded.preview} alt="preview" className="max-h-56 w-full object-contain" />
                               </div>
                             ) : (
-                              <div className="flex items-center gap-3 p-4">
-                                <span className="text-3xl">📄</span>
-                                <div>
-                                  <p className="font-medium text-gray-800 text-sm">{uploaded.file.name}</p>
-                                  <p className="text-gray-400 text-xs">{(uploaded.file.size / 1024).toFixed(1)} KB</p>
+                              <div className="flex items-center justify-between gap-3 p-4">
+                                <div className="flex items-center gap-3">
+                                  <span className="text-3xl">📄</span>
+                                  <div>
+                                    <p className="font-medium text-gray-800 text-sm">{uploaded.file.name}</p>
+                                    <p className="text-gray-400 text-xs">提出済みファイル</p>
+                                  </div>
                                 </div>
+                                <button
+                                  onClick={() => handleOpenPreview(doc.key, uploaded.storagePath!, t(`docs.${doc.key}`))}
+                                  disabled={previewLoading === doc.key}
+                                  className="flex items-center gap-1.5 px-3 py-1.5 text-xs text-blue-600 border border-blue-300 rounded-lg hover:bg-blue-50 disabled:opacity-50 transition-colors flex-shrink-0"
+                                >
+                                  {previewLoading === doc.key
+                                    ? <span className="w-3.5 h-3.5 rounded-full border-2 border-blue-400 border-t-transparent animate-spin inline-block" />
+                                    : "👁 プレビュー"
+                                  }
+                                </button>
                               </div>
                             )}
                           </div>
@@ -876,6 +901,21 @@ function ApplyContent() {
 
       {/* ウェルカムモーダル（初回登録時のみ） */}
       {showWelcome && <WelcomeModal onClose={() => setShowWelcome(false)} />}
+
+      {/* シングルページ書類プレビューモーダル */}
+      {previewModal && (
+        <div className="fixed inset-0 bg-black/60 z-50 flex items-center justify-center p-4" onClick={() => setPreviewModal(null)}>
+          <div className="bg-white rounded-2xl shadow-2xl max-w-2xl w-full max-h-[90vh] overflow-auto" onClick={(e) => e.stopPropagation()}>
+            <div className="flex items-center justify-between px-5 py-4 border-b">
+              <h3 className="font-semibold text-gray-800">{previewModal.name}</h3>
+              <button onClick={() => setPreviewModal(null)} className="text-gray-400 hover:text-gray-700 text-xl leading-none">✕</button>
+            </div>
+            <div className="p-5 flex justify-center">
+              <img src={previewModal.src} alt="preview" className="max-w-full max-h-[70vh] object-contain rounded-lg" />
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
