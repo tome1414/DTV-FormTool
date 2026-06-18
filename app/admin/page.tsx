@@ -65,7 +65,7 @@ const EMAIL_PREVIEW: Record<string, { subject: string; body: string }> = {
 const DOC_DOTS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "passport", i18nKey: "docs.passport" },
   { key: "bankStatement", i18nKey: "docs.bankStatement" },
-  { key: "bankStatementHistory", i18nKey: "docs.bankStatementHistory" },
+  { key: "bankStatementHistory", i18nKey: "docs.bankStatementHistory_short" },
   { key: "photo", i18nKey: "docs.photo" },
   { key: "driverLicense", i18nKey: "docs.driverLicense" },
   { key: "acceptanceLetter", i18nKey: "docs.acceptanceLetter" },

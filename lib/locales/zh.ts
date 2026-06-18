@@ -38,6 +38,7 @@ const zh = {
     passport: "护照照片页",
     bankStatement: "银行存款证明",
     bankStatementHistory: "银行账户交易记录（近3个月内）",
+    bankStatementHistory_short: "银行账户交易记录",
     photo: "证件照片",
     driverLicense: "申请地点居留证明",
     driverLicense_note: "请上传证明您在申请领事馆所在地合法居留的文件。在本国申请时，驾照或水电费账单均有效。在第三国申请时，有效签证、酒店收据或泰国机票可能被接受，但各领事馆要求不同，请提前确认。",

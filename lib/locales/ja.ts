@@ -38,6 +38,7 @@ const ja = {
     passport: "パスポート写真ページ",
     bankStatement: "残高証明書",
     bankStatementHistory: "銀行口座の取引履歴（直近3ヶ月以内）",
+    bankStatementHistory_short: "銀行口座の取引履歴",
     photo: "顔写真",
     driverLicense: "滞在証明書類",
     driverLicense_note: "申請する領事館・大使館での滞在を証明する書類をアップロードしてください。自国から申請する場合は運転免許証や公共料金の請求書が有効です。第三国から申請する場合は有効なビザ・ホテルの領収書・タイ行き航空券が使用できる場合がありますが、領事館によって受付条件が異なります。事前に申請先の領事館へご確認ください。",

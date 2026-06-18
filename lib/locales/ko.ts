@@ -38,6 +38,7 @@ const ko = {
     passport: "여권 사진 페이지",
     bankStatement: "잔액 증명서",
     bankStatementHistory: "은행 계좌 거래 내역 (최근 3개월)",
+    bankStatementHistory_short: "은행 계좌 거래 내역",
     photo: "증명사진",
     driverLicense: "신청지 체류 증명 서류",
     driverLicense_note: "신청하는 영사관 소재지에서의 합법적 체류를 증명하는 서류를 업로드하세요. 본국에서 신청 시 운전면허증이나 공과금 청구서가 유효합니다. 제3국에서 신청 시 유효한 비자, 호텔 영수증, 태국행 항공권이 인정될 수 있으나 영사관별 조건이 다르므로 반드시 사전에 확인하세요.",

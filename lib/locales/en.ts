@@ -38,6 +38,7 @@ const en = {
     passport: "Passport Photo Page",
     bankStatement: "Bank Statement",
     bankStatementHistory: "Bank Transaction History (Last 3 Months)",
+    bankStatementHistory_short: "Bank Transaction History",
     photo: "Portrait Photo",
     driverLicense: "Proof of Presence at Application Location",
     driverLicense_note: "Upload a document proving your legal presence at the location of the consulate where you are applying. From your home country, a driver's license or utility bill is accepted. From a third country, a valid visa, hotel receipt, or onward flight ticket may be accepted, but requirements vary by consulate. Please confirm with the specific consulate before applying.",
