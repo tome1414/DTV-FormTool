@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Plus, X } from "lucide-react";
+import { Plus, X, Eye } from "lucide-react";
 
 interface PageFile {
   id: string;
@@ -34,6 +34,18 @@ export default function MultiPageUpload({
   // ローカル選択済みファイル（未提出）
   const [localFiles, setLocalFiles] = useState<Record<string, { file: File; preview: string | null }>>({});
   const [previewModal, setPreviewModal] = useState<{ src: string; name: string } | null>(null);
+  const [loadingPreview, setLoadingPreview] = useState<string | null>(null);
+
+  const openPreview = async (pageId: string, storagePath: string, label: string) => {
+    setLoadingPreview(pageId);
+    try {
+      const res = await fetch(`/api/files?path=${encodeURIComponent(storagePath)}`);
+      const json = await res.json();
+      if (json.url) setPreviewModal({ src: json.url, name: label });
+    } finally {
+      setLoadingPreview(null);
+    }
+  };
 
   const canAddMore = pages.length < maxPages;
 
@@ -78,14 +90,17 @@ export default function MultiPageUpload({
               {/* 提出済みのプレビュー・削除 */}
               {isSubmitted && (
                 <div className="flex items-center gap-1">
-                  {page.file && page.file.type.startsWith("image/") && page.preview && (
-                    <button
-                      onClick={() => setPreviewModal({ src: page.preview!, name: `${idx + 1}ページ目` })}
-                      className="text-xs text-blue-500 hover:text-blue-700 px-2 py-1"
-                    >
-                      プレビュー
-                    </button>
-                  )}
+                  <button
+                    onClick={() => openPreview(page.id, page.storagePath!, `${idx + 1}ページ目`)}
+                    disabled={loadingPreview === page.id}
+                    className="text-blue-500 hover:text-blue-700 disabled:text-blue-300 transition-colors p-1"
+                    title="プレビュー"
+                  >
+                    {loadingPreview === page.id
+                      ? <span className="w-4 h-4 rounded-full border-2 border-blue-400 border-t-transparent animate-spin inline-block" />
+                      : <Eye size={16} />
+                    }
+                  </button>
                   <button
                     onClick={() => onRemovePage(page.id)}
                     disabled={disabled}
