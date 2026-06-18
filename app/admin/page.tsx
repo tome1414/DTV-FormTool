@@ -65,6 +65,7 @@ const EMAIL_PREVIEW: Record<string, { subject: string; body: string }> = {
 const DOC_DOTS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "passport", i18nKey: "docs.passport" },
   { key: "bankStatement", i18nKey: "docs.bankStatement" },
+  { key: "bankStatementHistory", i18nKey: "docs.bankStatementHistory" },
   { key: "photo", i18nKey: "docs.photo" },
   { key: "driverLicense", i18nKey: "docs.driverLicense" },
   { key: "acceptanceLetter", i18nKey: "docs.acceptanceLetter" },
@@ -91,7 +92,7 @@ const ADMIN_UPLOAD_DOCS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "existingPdfBundle", i18nKey: "docs.existingPdfBundle" },
 ];
 
-const USER_DOC_KEYS: DocumentKey[] = ["passport", "bankStatement", "photo"];
+const USER_DOC_KEYS: DocumentKey[] = ["passport", "bankStatement", "bankStatementHistory", "photo", "driverLicense"];
 const ADMIN_DOC_KEYS: DocumentKey[] = ["invoice", "acceptanceLetter", "existingPdfBundle"];
 
 interface AdminUploadedFile {
@@ -368,10 +369,10 @@ function DashboardView() {
     { label: "3月", value: applicants.filter(a => a.submittedAt.startsWith("2024-03")).length },
   ];
 
-  const docKeys = ["passport", "bankStatement", "photo", "driverLicense"] as DocumentKey[];
+  const docKeys = ["passport", "bankStatement", "bankStatementHistory", "photo", "driverLicense"] as DocumentKey[];
   const docLabels: Record<string, string> = {
     passport: "パスポート", bankStatement: "残高証明書",
-    photo: "顔写真", driverLicense: "滞在証明書類",
+    bankStatementHistory: "取引履歴", photo: "顔写真", driverLicense: "滞在証明書類",
   };
 
   return (
