@@ -80,7 +80,7 @@ function ApplyContent() {
   const [uploads, setUploads] = useState<Record<string, UploadedFile | null>>({});
   const [uploading, setUploading] = useState<Record<string, boolean>>({});
   const [uploadError, setUploadError] = useState<string | null>(null);
-  const [submitted, setSubmitted] = useState(false);
+  const submitted = false;
   const [bankHistoryPages, setBankHistoryPages] = useState<PageFile[]>([]);
   const [driverLicensePages, setDriverLicensePages] = useState<PageFile[]>([]);
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
