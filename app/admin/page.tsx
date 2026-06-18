@@ -560,10 +560,52 @@ function SettingsView() {
   );
 }
 
+function MultiPagePreview({ storagePaths, label }: { storagePaths: string[]; label: string }) {
+  const [signedUrls, setSignedUrls] = useState<(string | null)[]>(storagePaths.map(() => null));
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let cancelled = false;
+    Promise.all(
+      storagePaths.map((p) =>
+        fetch(`/api/files?path=${encodeURIComponent(p)}`).then((r) => r.json()).then((j) => j.url ?? null).catch(() => null)
+      )
+    ).then((urls) => {
+      if (!cancelled) { setSignedUrls(urls); setLoading(false); }
+    });
+    return () => { cancelled = true; };
+  }, [storagePaths]);
+
+  if (loading) return <div className="h-40 flex items-center justify-center"><span className="w-8 h-8 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      {storagePaths.map((p, idx) => {
+        const url = signedUrls[idx];
+        const ext = p.split(".").pop()?.toLowerCase();
+        const isImg = ["jpg", "jpeg", "png", "webp", "gif"].includes(ext ?? "");
+        return (
+          <div key={p} className="rounded-lg border border-gray-200 overflow-hidden">
+            <div className="px-3 py-1.5 bg-gray-50 border-b border-gray-100 text-xs text-gray-500 font-medium">{idx + 1}ページ目</div>
+            {url && isImg ? (
+              <img src={url} alt={`${label} ${idx + 1}`} className="w-full max-h-80 object-contain" />
+            ) : url ? (
+              <iframe src={url} className="w-full" style={{ height: "320px" }} title={`${label} ${idx + 1}`} />
+            ) : (
+              <div className="h-24 flex items-center justify-center text-sm text-gray-400">読み込めませんでした</div>
+            )}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+
 function PreviewModal({
   label,
   adminFile,
   storagePath,
+  storagePaths,
   uploadedAt,
   onClose,
   applicationId,
@@ -573,6 +615,7 @@ function PreviewModal({
   label: string;
   adminFile: AdminUploadedFile | null;
   storagePath?: string;
+  storagePaths?: string[];
   uploadedAt: string;
   onClose: () => void;
   applicationId?: string;
@@ -745,7 +788,10 @@ function PreviewModal({
 
         {/* Content */}
         <div className={`${cropMode ? "flex-1 overflow-auto flex items-center justify-center p-4 bg-gray-950" : "p-5 overflow-auto"}`}>
-          {cropMode ? (
+          {storagePaths && storagePaths.length > 0 && !cropMode ? (
+            /* ── Multi-page preview ── */
+            <MultiPagePreview storagePaths={storagePaths} label={label} />
+          ) : cropMode ? (
             /* ── Crop canvas ── */
             <>
               {!cropImgLoaded && (
@@ -1407,18 +1453,24 @@ function DetailPanel({
         );
       })()}
 
-      {previewDoc && (
-        <PreviewModal
-          label={previewDoc.label}
-          adminFile={adminFiles[previewDoc.key] ?? null}
-          storagePath={adminFiles[previewDoc.key] ? undefined : applicant.documentPaths?.[previewDoc.key]}
-          uploadedAt={applicant.updatedAt}
-          onClose={() => setPreviewDoc(null)}
-          applicationId={applicant.id}
-          canCrop={previewDoc.key === "passport"}
-          onCropped={(newPath) => updateDocument(applicant.id, "passport", true, newPath)}
-        />
-      )}
+      {previewDoc && (() => {
+        const MULTI_PAGE_KEYS = ["bankStatementHistory", "driverLicense"] as const;
+        const isMultiPage = (MULTI_PAGE_KEYS as readonly string[]).includes(previewDoc.key);
+        const multiPaths = isMultiPage ? (applicant.documentStoragePaths?.[previewDoc.key] ?? []) : [];
+        return (
+          <PreviewModal
+            label={previewDoc.label}
+            adminFile={adminFiles[previewDoc.key] ?? null}
+            storagePaths={multiPaths.length > 0 ? multiPaths : undefined}
+            storagePath={multiPaths.length > 0 ? undefined : (adminFiles[previewDoc.key] ? undefined : applicant.documentPaths?.[previewDoc.key])}
+            uploadedAt={applicant.updatedAt}
+            onClose={() => setPreviewDoc(null)}
+            applicationId={applicant.id}
+            canCrop={previewDoc.key === "passport"}
+            onCropped={(newPath) => updateDocument(applicant.id, "passport", true, newPath)}
+          />
+        );
+      })()}
     </div>
   );
 }

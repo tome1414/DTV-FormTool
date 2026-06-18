@@ -298,10 +298,7 @@ function ApplyContent() {
             p.id === pageId ? { ...p, file, storagePath: json.path, isUploading: false } : p
           )
         );
-        // Mark as uploaded if at least one page is uploaded
-        if (bankHistoryPages.some((p) => p.storagePath)) {
-          updateDocument(myApplication.id, "bankStatementHistory", true, json.path);
-        }
+        updateDocument(myApplication.id, "bankStatementHistory", true, json.path);
       } else {
         setUploadError(`アップロードエラー: ${json.error ?? res.status}`);
         setBankHistoryPages((prev) =>
@@ -359,9 +356,7 @@ function ApplyContent() {
             p.id === pageId ? { ...p, file, storagePath: json.path, isUploading: false } : p
           )
         );
-        if (driverLicensePages.some((p) => p.storagePath)) {
-          updateDocument(myApplication.id, "driverLicense", true, json.path);
-        }
+        updateDocument(myApplication.id, "driverLicense", true, json.path);
       } else {
         setUploadError(`アップロードエラー: ${json.error ?? res.status}`);
         setDriverLicensePages((prev) =>
