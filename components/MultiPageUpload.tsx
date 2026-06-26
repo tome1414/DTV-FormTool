@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { Plus, X, Eye } from "lucide-react";
+import { Plus, X, Eye, RefreshCw } from "lucide-react";
 
 interface PageFile {
   id: string;
@@ -16,6 +16,7 @@ interface MultiPageUploadProps {
   onAddPage: () => void;
   onRemovePage: (pageId: string) => void;
   onUploadPage: (pageId: string, file: File) => void;
+  onReplacePage?: (pageId: string, file: File) => void;
   maxPages?: number;
   disabled?: boolean;
   documentKey?: string;
@@ -27,14 +28,17 @@ export default function MultiPageUpload({
   onAddPage,
   onRemovePage,
   onUploadPage,
+  onReplacePage,
   maxPages = 30,
   disabled = false,
 }: MultiPageUploadProps) {
   const fileRefs = useRef<Record<string, HTMLInputElement | null>>({});
-  // ローカル選択済みファイル（未提出）
+  const replaceRefs = useRef<Record<string, HTMLInputElement | null>>({});
   const [localFiles, setLocalFiles] = useState<Record<string, { file: File; preview: string | null }>>({});
   const [previewModal, setPreviewModal] = useState<{ src: string; name: string } | null>(null);
   const [loadingPreview, setLoadingPreview] = useState<string | null>(null);
+
+  const canAddMore = pages.length < maxPages;
 
   const openPreview = async (pageId: string, storagePath: string, label: string) => {
     setLoadingPreview(pageId);
@@ -47,8 +51,6 @@ export default function MultiPageUpload({
     }
   };
 
-  const canAddMore = pages.length < maxPages;
-
   const handleFileSelect = (pageId: string, file: File) => {
     const preview = file.type.startsWith("image/") ? URL.createObjectURL(file) : null;
     setLocalFiles((prev) => ({ ...prev, [pageId]: { file, preview } }));
@@ -58,7 +60,6 @@ export default function MultiPageUpload({
     const local = localFiles[pageId];
     if (!local) return;
     onUploadPage(pageId, local.file);
-    // 提出後にローカルから削除
     setLocalFiles((prev) => { const n = { ...prev }; delete n[pageId]; return n; });
   };
 
@@ -87,12 +88,14 @@ export default function MultiPageUpload({
                 {isSubmitted && <span className="text-xs text-green-600 font-medium">提出済み</span>}
                 {isLocalOnly && <span className="text-xs text-amber-600 font-medium">未提出</span>}
               </div>
-              {/* 提出済みのプレビュー・削除 */}
+
+              {/* 提出済みのアクションボタン */}
               {isSubmitted && (
                 <div className="flex items-center gap-1">
+                  {/* プレビュー */}
                   <button
                     onClick={() => openPreview(page.id, page.storagePath!, `${idx + 1}ページ目`)}
-                    disabled={loadingPreview === page.id}
+                    disabled={loadingPreview === page.id || page.isUploading}
                     className="text-blue-500 hover:text-blue-700 disabled:text-blue-300 transition-colors p-1"
                     title="プレビュー"
                   >
@@ -101,9 +104,24 @@ export default function MultiPageUpload({
                       : <Eye size={16} />
                     }
                   </button>
+                  {/* 差し替え */}
+                  {onReplacePage && (
+                    <button
+                      onClick={() => replaceRefs.current[page.id]?.click()}
+                      disabled={disabled || page.isUploading}
+                      className="text-gray-400 hover:text-orange-500 disabled:text-gray-200 transition-colors p-1"
+                      title="差し替え"
+                    >
+                      {page.isUploading
+                        ? <span className="w-4 h-4 rounded-full border-2 border-orange-400 border-t-transparent animate-spin inline-block" />
+                        : <RefreshCw size={14} />
+                      }
+                    </button>
+                  )}
+                  {/* 削除 */}
                   <button
                     onClick={() => onRemovePage(page.id)}
-                    disabled={disabled}
+                    disabled={disabled || page.isUploading}
                     className="text-gray-400 hover:text-red-500 disabled:text-gray-200 transition-colors p-1"
                     title="削除"
                   >
@@ -127,7 +145,6 @@ export default function MultiPageUpload({
             {/* 状態2: 選択済み・未提出 */}
             {isLocalOnly && (
               <div className="p-3 space-y-2.5">
-                {/* ファイル情報 */}
                 {local.preview ? (
                   <img src={local.preview} alt="preview" className="w-full max-h-40 object-contain rounded-lg border border-gray-200" />
                 ) : (
@@ -139,12 +156,10 @@ export default function MultiPageUpload({
                     </div>
                   </div>
                 )}
-                {/* 警告 */}
                 <div className="flex items-start gap-2 bg-amber-50 border border-amber-200 rounded-lg px-3 py-2">
                   <span className="text-amber-500 flex-shrink-0 mt-0.5">⚠️</span>
                   <p className="text-xs text-amber-800">まだ提出されていません。「提出する」を押してください。</p>
                 </div>
-                {/* ボタン */}
                 <div className="flex gap-2">
                   <button
                     onClick={() => handleRemoveLocal(page.id)}
@@ -171,6 +186,7 @@ export default function MultiPageUpload({
               </div>
             )}
 
+            {/* 新規アップロード用 file input */}
             <input
               ref={(el) => { if (el) fileRefs.current[page.id] = el; }}
               type="file"
@@ -182,6 +198,20 @@ export default function MultiPageUpload({
                 e.target.value = "";
               }}
             />
+            {/* 差し替え用 file input */}
+            {onReplacePage && (
+              <input
+                ref={(el) => { if (el) replaceRefs.current[page.id] = el; }}
+                type="file"
+                className="hidden"
+                accept="image/*,.pdf"
+                onChange={(e) => {
+                  const file = e.target.files?.[0];
+                  if (file) onReplacePage(page.id, file);
+                  e.target.value = "";
+                }}
+              />
+            )}
           </div>
         );
       })}

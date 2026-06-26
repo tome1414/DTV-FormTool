@@ -315,6 +315,44 @@ function ApplyContent() {
     }
   };
 
+  const handleReplaceBankPage = async (pageId: string, file: File) => {
+    if (!myApplication) return;
+    const page = bankHistoryPages.find((p) => p.id === pageId);
+    if (!page?.storagePath) return;
+
+    setBankHistoryPages((prev) =>
+      prev.map((p) => (p.id === pageId ? { ...p, isUploading: true } : p))
+    );
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("applicationId", myApplication.id);
+      formData.append("documentKey", "bankStatementHistory");
+      formData.append("replaceStoragePath", page.storagePath);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (res.ok) {
+        setBankHistoryPages((prev) =>
+          prev.map((p) =>
+            p.id === pageId ? { ...p, file, storagePath: json.path, isUploading: false } : p
+          )
+        );
+        updateDocument(myApplication.id, "bankStatementHistory", true, json.path);
+      } else {
+        setUploadError(`差し替えエラー: ${json.error ?? res.status}`);
+        setBankHistoryPages((prev) =>
+          prev.map((p) => (p.id === pageId ? { ...p, isUploading: false } : p))
+        );
+      }
+    } catch (e) {
+      setUploadError(`ネットワークエラー: ${e instanceof Error ? e.message : "不明"}`);
+      setBankHistoryPages((prev) =>
+        prev.map((p) => (p.id === pageId ? { ...p, isUploading: false } : p))
+      );
+    }
+  };
+
   // driverLicense 複数ページ操作
   const handleAddDriverPage = () => {
     setDriverLicensePages((prev) => [
@@ -333,6 +371,44 @@ function ApplyContent() {
     setDriverLicensePages((prev) => prev.filter((p) => p.id !== pageId));
     if (driverLicensePages.filter((p) => p.id !== pageId).length === 0 && myApplication) {
       updateDocument(myApplication.id, "driverLicense", false);
+    }
+  };
+
+  const handleReplaceDriverPage = async (pageId: string, file: File) => {
+    if (!myApplication) return;
+    const page = driverLicensePages.find((p) => p.id === pageId);
+    if (!page?.storagePath) return;
+
+    setDriverLicensePages((prev) =>
+      prev.map((p) => (p.id === pageId ? { ...p, isUploading: true } : p))
+    );
+    setUploadError(null);
+    try {
+      const formData = new FormData();
+      formData.append("file", file);
+      formData.append("applicationId", myApplication.id);
+      formData.append("documentKey", "driverLicense");
+      formData.append("replaceStoragePath", page.storagePath);
+      const res = await fetch("/api/upload", { method: "POST", body: formData });
+      const json = await res.json();
+      if (res.ok) {
+        setDriverLicensePages((prev) =>
+          prev.map((p) =>
+            p.id === pageId ? { ...p, file, storagePath: json.path, isUploading: false } : p
+          )
+        );
+        updateDocument(myApplication.id, "driverLicense", true, json.path);
+      } else {
+        setUploadError(`差し替えエラー: ${json.error ?? res.status}`);
+        setDriverLicensePages((prev) =>
+          prev.map((p) => (p.id === pageId ? { ...p, isUploading: false } : p))
+        );
+      }
+    } catch (e) {
+      setUploadError(`ネットワークエラー: ${e instanceof Error ? e.message : "不明"}`);
+      setDriverLicensePages((prev) =>
+        prev.map((p) => (p.id === pageId ? { ...p, isUploading: false } : p))
+      );
     }
   };
 
@@ -740,6 +816,7 @@ function ApplyContent() {
                         onAddPage={handleAddBankPage}
                         onRemovePage={handleRemoveBankPage}
                         onUploadPage={handleUploadBankPage}
+                        onReplacePage={handleReplaceBankPage}
                         maxPages={30}
                         disabled={false}
                         documentKey="bankStatementHistory"
@@ -753,6 +830,7 @@ function ApplyContent() {
                         onAddPage={handleAddDriverPage}
                         onRemovePage={handleRemoveDriverPage}
                         onUploadPage={handleUploadDriverPage}
+                        onReplacePage={handleReplaceDriverPage}
                         maxPages={30}
                         disabled={false}
                         documentKey="driverLicense"

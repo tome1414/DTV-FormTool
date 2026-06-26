@@ -9,6 +9,8 @@ const ALLOWED_TYPES = [
   "application/pdf",
 ];
 
+const MULTI_PAGE_KEYS = ["bankStatementHistory", "driverLicense"];
+
 export async function POST(request: NextRequest) {
   const sessionUser = await getSessionUser();
   if (!sessionUser) return unauthorized();
@@ -23,6 +25,8 @@ export async function POST(request: NextRequest) {
   const file = formData.get("file") as File | null;
   const applicationId = formData.get("applicationId") as string | null;
   const documentKey = formData.get("documentKey") as DocumentKey | null;
+  // 差し替え時のみ指定される: 同じ位置のパスを入れ替える
+  const replaceStoragePath = formData.get("replaceStoragePath") as string | null;
 
   if (!file || !applicationId || !documentKey) {
     return NextResponse.json(
@@ -76,8 +80,6 @@ export async function POST(request: NextRequest) {
     );
   }
 
-  // 複数ページ対応書類は storage_paths JSONB に追記
-  const MULTI_PAGE_KEYS = ["bankStatementHistory", "driverLicense"];
   if (MULTI_PAGE_KEYS.includes(documentKey)) {
     const { data: existing } = await supabaseAdmin
       .from("documents")
@@ -87,9 +89,24 @@ export async function POST(request: NextRequest) {
       .single();
 
     const currentPaths: string[] = Array.isArray(existing?.storage_paths) ? existing.storage_paths : [];
+
+    let newPaths: string[];
+    if (replaceStoragePath) {
+      // 差し替え: 同じインデックスの位置でパスを入れ替える
+      const idx = currentPaths.indexOf(replaceStoragePath);
+      newPaths = idx >= 0
+        ? [...currentPaths.slice(0, idx), uploadData.path, ...currentPaths.slice(idx + 1)]
+        : [...currentPaths, uploadData.path];
+      // 古いファイルをStorageから削除
+      await supabaseAdmin.storage.from(BUCKET).remove([replaceStoragePath]);
+    } else {
+      // 新規追加
+      newPaths = [...currentPaths, uploadData.path];
+    }
+
     await supabaseAdmin
       .from("documents")
-      .update({ storage_paths: [...currentPaths, uploadData.path] })
+      .update({ storage_paths: newPaths })
       .eq("application_id", applicationId)
       .eq("document_key", documentKey);
   }
