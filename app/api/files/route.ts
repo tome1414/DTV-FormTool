@@ -65,15 +65,17 @@ export async function DELETE(request: NextRequest) {
 
   // path形式: {applicationId}/{documentKey}/{filename}
   const parts = path.split("/");
+  const appId = parts[0] ?? "";
   const docKey = parts[1] ?? "";
   const MULTI_PAGE_KEYS = ["bankStatementHistory", "driverLicense"];
 
   if (MULTI_PAGE_KEYS.includes(docKey)) {
-    // storage_paths から該当パスを除去し、残りがなければ is_uploaded = false
+    // application_id + document_key で行を特定（storage_pathは最後のページで上書きされるため使えない）
     const { data: existing } = await supabaseAdmin
       .from("documents")
       .select("storage_paths")
-      .eq("storage_path", path)
+      .eq("application_id", appId)
+      .eq("document_key", docKey)
       .maybeSingle();
 
     const remaining: string[] = Array.isArray(existing?.storage_paths)
@@ -88,7 +90,8 @@ export async function DELETE(request: NextRequest) {
         is_uploaded: remaining.length > 0,
         ...(remaining.length === 0 ? { file_name: null, mime_type: null, file_size: null, is_approved: false, uploaded_at: null } : {}),
       })
-      .eq("storage_path", path);
+      .eq("application_id", appId)
+      .eq("document_key", docKey);
   } else {
     await supabaseAdmin
       .from("documents")
