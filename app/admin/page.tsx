@@ -130,8 +130,11 @@ function DownloadSection({
 }) {
   const adminReady = ADMIN_DOC_KEYS.every((k) => applicant.documents[k]);
   const bundleReady = BUNDLE_DOC_KEYS.every((k) => applicant.documents[k]);
+  const bankBundleReady = applicant.documents["bankStatement"] && applicant.documents["bankStatementHistory"];
   const [bundleDownloading, setBundleDownloading] = useState(false);
   const [bundleSizeLabel, setBundleSizeLabel] = useState<string | null>(null);
+  const [bankBundleDownloading, setBankBundleDownloading] = useState(false);
+  const [bankBundleSizeLabel, setBankBundleSizeLabel] = useState<string | null>(null);
   const [dropdownOpen, setDropdownOpen] = useState(false);
   const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
@@ -144,7 +147,7 @@ function DownloadSection({
   const handleBundleDownload = async () => {
     setBundleDownloading(true);
     try {
-      const res = await fetch(`/api/applications/${applicant.id}/bundle`);
+      const res = await fetch(`/api/applications/${applicant.id}/bundle?type=admin`);
       if (!res.ok) {
         const json = await res.json().catch(() => ({}));
         throw new Error(json.error ?? `HTTP ${res.status}`);
@@ -161,6 +164,29 @@ function DownloadSection({
       // silently fail
     } finally {
       setBundleDownloading(false);
+    }
+  };
+
+  const handleBankBundleDownload = async () => {
+    setBankBundleDownloading(true);
+    try {
+      const res = await fetch(`/api/applications/${applicant.id}/bundle?type=bank`);
+      if (!res.ok) {
+        const json = await res.json().catch(() => ({}));
+        throw new Error(json.error ?? `HTTP ${res.status}`);
+      }
+      const blob = await res.blob();
+      setBankBundleSizeLabel(formatBytes(blob.size));
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `bank_bundle_${applicant.applicationNumber}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+    } catch {
+      // silently fail
+    } finally {
+      setBankBundleDownloading(false);
     }
   };
 
@@ -248,11 +274,34 @@ function DownloadSection({
         )}
       </div>
 
-      {/* Bundle PDF Download */}
+      {/* 銀行書類 PDF一括（残高証明 + 取引履歴） */}
+      <button
+        onClick={bankBundleReady ? handleBankBundleDownload : undefined}
+        disabled={!bankBundleReady || bankBundleDownloading}
+        className={`w-full text-sm py-2 transition-colors font-medium flex items-center justify-center gap-2 border-b border-gray-200 ${
+          bankBundleReady
+            ? "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white"
+            : "bg-gray-100 text-gray-400 cursor-not-allowed"
+        }`}
+        title={bankBundleReady ? undefined : "残高証明書と取引履歴が必要です"}
+      >
+        {bankBundleDownloading
+          ? <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
+          : <Download size={14} />
+        }
+        {bankBundleDownloading
+          ? "生成中..."
+          : bankBundleSizeLabel
+            ? `銀行書類PDF一括 (${bankBundleSizeLabel})`
+            : "銀行書類PDF一括"
+        }
+      </button>
+
+      {/* 管理者書類 PDF一括（受入れレター + インボイス + 既存PDF一式） */}
       <button
         onClick={bundleReady ? handleBundleDownload : undefined}
         disabled={!bundleReady || bundleDownloading}
-        className={`w-full text-sm py-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 ${
+        className={`w-full text-sm py-2 transition-colors font-medium flex items-center justify-center gap-2 ${
           bundleReady
             ? "bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white"
             : "bg-gray-100 text-gray-400 cursor-not-allowed"
