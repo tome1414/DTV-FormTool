@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
-import { Eye, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle, X, LayoutDashboard, Settings, Users, Download, Crop } from "lucide-react";
+import { Eye, RefreshCw, Upload, Trash2, CheckCircle2, AlertTriangle, X, LayoutDashboard, Settings, Users, Download, Crop, ExternalLink } from "lucide-react";
 import { useStore, Applicant, ApplicationStatus, DocumentKey } from "@/lib/store";
 import { findConsulateById } from "@/lib/consulateData";
 import { useI18n } from "@/lib/i18n";
@@ -103,6 +103,25 @@ interface AdminUploadedFile {
 
 const BUNDLE_DOC_KEYS = ["acceptanceLetter", "invoice", "existingPdfBundle"] as const;
 
+const DOC_LABEL_JA: Record<string, string> = {
+  passport:             "パスポート",
+  bankStatement:        "残高証明書",
+  bankStatementHistory: "取引履歴",
+  photo:                "顔写真",
+  driverLicense:        "滞在証明書類",
+  flightTicket:         "フライトeチケット",
+  pgaLicense:           "PGAライセンス",
+  acceptanceLetter:     "受入れレター",
+  invoice:              "インボイス",
+  existingPdfBundle:    "既存PDF一式",
+};
+
+const ALL_DOC_KEYS: DocumentKey[] = [
+  "passport", "bankStatement", "bankStatementHistory", "photo", "driverLicense",
+  "flightTicket", "pgaLicense", "acceptanceLetter", "invoice", "existingPdfBundle",
+];
+const MULTI_PAGE_DOC_KEYS: DocumentKey[] = ["bankStatementHistory", "driverLicense"];
+
 function DownloadSection({
   applicant,
   t,
@@ -110,14 +129,12 @@ function DownloadSection({
   applicant: Applicant;
   t: (key: string, vars?: Record<string, string>) => string;
 }) {
-  const userReady = USER_DOC_KEYS.every((k) => applicant.documents[k]);
   const adminReady = ADMIN_DOC_KEYS.every((k) => applicant.documents[k]);
-  const canDownload = userReady && adminReady;
   const bundleReady = BUNDLE_DOC_KEYS.every((k) => applicant.documents[k]);
-  const [downloading, setDownloading] = useState(false);
-  const [downloadError, setDownloadError] = useState<string | null>(null);
   const [bundleDownloading, setBundleDownloading] = useState(false);
   const [bundleSizeLabel, setBundleSizeLabel] = useState<string | null>(null);
+  const [dropdownOpen, setDropdownOpen] = useState(false);
+  const [loadingKey, setLoadingKey] = useState<string | null>(null);
 
   const formatBytes = (bytes: number) => {
     if (bytes < 1024) return `${bytes}B`;
@@ -148,46 +165,41 @@ function DownloadSection({
     }
   };
 
-  const handleDownload = async () => {
-    setDownloading(true);
-    setDownloadError(null);
+  const openFile = async (storagePath: string, itemKey: string) => {
+    setLoadingKey(itemKey);
     try {
-      const res = await fetch("/api/download", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ applicationId: applicant.id }),
-      });
-      if (!res.ok) {
-        const json = await res.json().catch(() => ({}));
-        throw new Error(json.error ?? `HTTP ${res.status}`);
-      }
-      const blob = await res.blob();
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${applicant.applicationNumber}_documents.zip`;
-      a.click();
-      URL.revokeObjectURL(url);
-    } catch (err) {
-      setDownloadError(err instanceof Error ? err.message : t("admin.download_failed"));
+      const res = await fetch(`/api/files?path=${encodeURIComponent(storagePath)}`);
+      const json = await res.json();
+      if (json.url) window.open(json.url, "_blank", "noopener,noreferrer");
     } finally {
-      setDownloading(false);
+      setLoadingKey(null);
+      setDropdownOpen(false);
     }
   };
+
+  // アップロード済み書類を列挙（複数ページは1ページずつ）
+  const availableItems: { key: string; label: string; storagePath: string }[] = [];
+  for (const docKey of ALL_DOC_KEYS) {
+    if (!applicant.documents[docKey]) continue;
+    if (MULTI_PAGE_DOC_KEYS.includes(docKey)) {
+      const paths: string[] = applicant.documentStoragePaths?.[docKey] ?? [];
+      if (paths.length > 0) {
+        paths.forEach((p, i) =>
+          availableItems.push({ key: `${docKey}_${i}`, label: `${DOC_LABEL_JA[docKey]} ${i + 1}ページ目`, storagePath: p })
+        );
+      } else if (applicant.documentPaths?.[docKey]) {
+        availableItems.push({ key: docKey, label: DOC_LABEL_JA[docKey] ?? docKey, storagePath: applicant.documentPaths[docKey]! });
+      }
+    } else {
+      const path = applicant.documentPaths?.[docKey];
+      if (path) availableItems.push({ key: docKey, label: DOC_LABEL_JA[docKey] ?? docKey, storagePath: path });
+    }
+  }
 
   return (
     <div className="rounded-lg border border-gray-200 overflow-hidden">
       {/* Checklist */}
       <div className="px-3 py-2 bg-gray-50 border-b border-gray-200 space-y-1">
-        <div className="flex items-center gap-2 text-xs">
-          <span className={userReady ? "text-green-500" : "text-red-400"}>
-            {userReady ? "✓" : "✕"}
-          </span>
-          <span className={userReady ? "text-gray-600" : "text-red-500"}>
-            {t("admin.download_pending_user")}
-            {userReady && ` — OK`}
-          </span>
-        </div>
         <div className="flex items-center gap-2 text-xs">
           <span className={adminReady ? "text-green-500" : "text-red-400"}>
             {adminReady ? "✓" : "✕"}
@@ -197,30 +209,51 @@ function DownloadSection({
             {adminReady && ` — OK`}
           </span>
         </div>
-        {downloadError && (
-          <p className="text-xs text-red-500 pt-0.5">{downloadError}</p>
+      </div>
+
+      {/* 個別ダウンロード ドロップダウン */}
+      <div className="relative">
+        <button
+          onClick={() => setDropdownOpen((v) => !v)}
+          disabled={availableItems.length === 0}
+          className={`w-full text-sm py-2.5 px-4 font-medium flex items-center justify-between transition-colors ${
+            availableItems.length > 0
+              ? "bg-white hover:bg-gray-50 text-gray-700 border-b border-gray-200"
+              : "bg-gray-50 text-gray-400 cursor-not-allowed"
+          }`}
+        >
+          <span className="flex items-center gap-2">
+            <Download size={14} />
+            個別ダウンロード
+          </span>
+          <span className="text-gray-400 text-xs">{availableItems.length > 0 ? `${availableItems.length}件 ▼` : "書類なし"}</span>
+        </button>
+
+        {dropdownOpen && availableItems.length > 0 && (
+          <div className="absolute left-0 right-0 z-20 bg-white border border-gray-200 shadow-lg rounded-b-lg max-h-60 overflow-y-auto">
+            {availableItems.map((item) => (
+              <button
+                key={item.key}
+                onClick={() => openFile(item.storagePath, item.key)}
+                disabled={loadingKey === item.key}
+                className="w-full text-left px-4 py-2.5 text-sm text-gray-700 hover:bg-blue-50 hover:text-blue-700 flex items-center justify-between border-b border-gray-100 last:border-0 transition-colors"
+              >
+                <span>{item.label}</span>
+                {loadingKey === item.key
+                  ? <span className="w-3.5 h-3.5 rounded-full border-2 border-blue-400 border-t-transparent animate-spin" />
+                  : <ExternalLink size={12} className="text-gray-400" />
+                }
+              </button>
+            ))}
+          </div>
         )}
       </div>
-      <button
-        onClick={canDownload ? handleDownload : undefined}
-        disabled={!canDownload || downloading}
-        className={`w-full text-sm py-2 transition-colors font-medium flex items-center justify-center gap-2 ${
-          canDownload
-            ? "bg-blue-600 hover:bg-blue-700 disabled:bg-blue-400 text-white"
-            : "bg-gray-100 text-gray-400 cursor-not-allowed"
-        }`}
-      >
-        {downloading && (
-          <span className="w-3.5 h-3.5 rounded-full border-2 border-white border-t-transparent animate-spin" />
-        )}
-        {canDownload ? t("admin.download_ready") : t("admin.download_pdf")}
-      </button>
 
       {/* Bundle PDF Download */}
       <button
         onClick={bundleReady ? handleBundleDownload : undefined}
         disabled={!bundleReady || bundleDownloading}
-        className={`mt-2 w-full text-sm py-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 ${
+        className={`w-full text-sm py-2 rounded-lg transition-colors font-medium flex items-center justify-center gap-2 ${
           bundleReady
             ? "bg-emerald-600 hover:bg-emerald-700 disabled:bg-emerald-400 text-white"
             : "bg-gray-100 text-gray-400 cursor-not-allowed"
