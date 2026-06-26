@@ -92,7 +92,6 @@ const ADMIN_UPLOAD_DOCS: { key: DocumentKey; i18nKey: string }[] = [
   { key: "existingPdfBundle", i18nKey: "docs.existingPdfBundle" },
 ];
 
-const USER_DOC_KEYS: DocumentKey[] = ["passport", "bankStatement", "bankStatementHistory", "photo", "driverLicense"];
 const ADMIN_DOC_KEYS: DocumentKey[] = ["invoice", "acceptanceLetter", "existingPdfBundle"];
 
 interface AdminUploadedFile {
